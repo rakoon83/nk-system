@@ -1,0 +1,72 @@
+/* common.css */
+
+*{
+  box-sizing:border-box;
+}
+
+body{
+  margin:0;
+  background:#f4f6fb;
+  color:#111827;
+}
+
+/* 레이아웃 */
+
+.page{
+  max-width:1400px;
+  margin:auto;
+  padding:24px;
+}
+
+/* 카드 */
+
+.card{
+  background:#fff;
+  border:1px solid #e5e7eb;
+  border-radius:14px;
+  padding:18px;
+  box-shadow:0 6px 20px rgba(0,0,0,.05);
+}
+
+/* 버튼 */
+
+.btn{
+  border:none;
+  background:#2563eb;
+  color:#fff;
+  padding:10px 14px;
+  border-radius:8px;
+  cursor:pointer;
+  font-size:14px;
+}
+
+.btn.gray{
+  background:#6b7280;
+}
+
+.btn.red{
+  background:#dc2626;
+}
+
+/* 칩 */
+
+.chip{
+  display:inline-block;
+  padding:6px 10px;
+  border-radius:8px;
+  background:#fff;
+  border:1px solid #e5e7eb;
+  font-size:12px;
+}
+
+/* 아이콘 박스 */
+
+.icon-box{
+  width:44px;
+  height:44px;
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#eff6ff;
+}

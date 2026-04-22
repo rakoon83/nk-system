@@ -1,0 +1,120 @@
+/* /assets/css/modal.css */
+
+.wms-modal{
+  position:fixed;
+  inset:0;
+  background:rgba(15,23,42,.35);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:1000;
+  padding:20px;
+}
+
+.wms-modal.is-open{
+  display:flex;
+}
+
+.wms-modal-box{
+  width:100%;
+  max-width:560px;
+  background:#fff;
+  border-radius:14px;
+  border:1px solid #e5e7eb;
+  box-shadow:0 20px 60px rgba(0,0,0,.14);
+  padding:18px;
+}
+
+.wms-modal-title{
+  margin:0 0 14px;
+  font-size:18px;
+  font-weight:800;
+  color:#111827;
+}
+
+.wms-modal-body{
+  color:#111827;
+}
+
+.wms-modal-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:8px;
+  margin-top:14px;
+  flex-wrap:wrap;
+}
+
+.wms-modal-btn{
+  min-width:74px;
+  height:34px;
+  border:1px solid #d7dce2;
+  background:#fff;
+  border-radius:8px;
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+  color:#334155;
+}
+
+.wms-modal-btn.primary{
+  background:#111827;
+  color:#fff;
+  border-color:#111827;
+}
+
+.wms-form-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:12px;
+}
+
+.wms-form-row{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+}
+
+.wms-form-row.full{
+  grid-column:1 / -1;
+}
+
+.wms-form-label{
+  font-size:12px;
+  font-weight:700;
+  color:#475569;
+}
+
+.wms-form-input,
+.wms-form-textarea{
+  width:100%;
+  border:1px solid #d7dce2;
+  border-radius:8px;
+  background:#fff;
+  font-size:13px;
+  padding:10px 12px;
+  color:#111827;
+}
+
+.wms-form-input{
+  height:38px;
+}
+
+.wms-form-textarea{
+  min-height:200px;
+  resize:vertical;
+  font-family:inherit;
+  line-height:1.55;
+}
+
+.wms-help-text{
+  margin-top:8px;
+  font-size:12px;
+  color:#6b7280;
+  line-height:1.5;
+}
+
+@media (max-width:900px){
+  .wms-form-grid{
+    grid-template-columns:1fr;
+  }
+}

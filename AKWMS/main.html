@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WMS 메인</title>
+
+  <link rel="stylesheet" href="/assets/css/font.css">
+  <link rel="stylesheet" href="/assets/css/common.css">
+  <link rel="stylesheet" href="/assets/css/table.css">
+  <link rel="stylesheet" href="/assets/css/nav.css">
+
+  <style>
+    .hero{
+      background:linear-gradient(135deg,#ffffff 0%,#eef4ff 100%);
+      border:1px solid #dbe2ea;
+      border-radius:18px;
+      padding:24px;
+      box-shadow:0 8px 24px rgba(0,0,0,.05);
+      margin-bottom:20px;
+    }
+
+    .hero-title{
+      margin:0 0 8px;
+      font-size:26px;
+      font-weight:800;
+      color:#0f172a;
+    }
+
+    .hero-desc{
+      margin:0;
+      font-size:14px;
+      color:#6b7280;
+      line-height:1.6;
+    }
+
+    .section h2{
+      margin:0 0 14px;
+      font-size:20px;
+      color:#111827;
+    }
+
+    .menu-grid{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:16px;
+    }
+
+    .menu-card{
+      display:block;
+      text-decoration:none;
+      color:inherit;
+    }
+
+    .menu-title{
+      font-size:17px;
+      font-weight:800;
+      margin-bottom:6px;
+      color:#111827;
+    }
+
+    .menu-desc{
+      font-size:13px;
+      line-height:1.5;
+      color:#6b7280;
+      min-height:38px;
+    }
+
+    .menu-path{
+      margin-top:12px;
+      font-size:12px;
+      color:#2563eb;
+      font-weight:700;
+    }
+
+    @media (max-width: 1100px){
+      .menu-grid{ grid-template-columns:repeat(3,minmax(0,1fr)); }
+    }
+
+    @media (max-width: 780px){
+      .menu-grid{ grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .hero-title{ font-size:22px; }
+    }
+
+    @media (max-width: 520px){
+      .menu-grid{ grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="app-nav"></div>
+
+  <div id="page-content">
+    <div class="hero">
+      <h2 class="hero-title">메인 메뉴</h2>
+      <p class="hero-desc">자주 사용하는 화면으로 바로 이동할 수 있습니다.</p>
+    </div>
+
+    <div class="section">
+      <h2>바로가기</h2>
+
+      <div class="menu-grid">
+        <a class="menu-card card" href="/pages/dashboard/index.html">
+          <div class="menu-title">대시보드</div>
+          <div class="menu-desc">상차 현황, 작업 현황, 주요 지표 확인</div>
+          <div class="menu-path">/pages/dashboard/index.html</div>
+        </a>
+
+        <a class="menu-card card" href="/pages/scan/scan_load.html">
+          <div class="menu-title">상차 스캔</div>
+          <div class="menu-desc">상차 진행 스캔 화면</div>
+          <div class="menu-path">/pages/scan/scan_load.html</div>
+        </a>
+
+        <a class="menu-card card" href="/pages/query/stock.html">
+          <div class="menu-title">재고 조회</div>
+          <div class="menu-desc">창고별 재고 및 로케이션 조회</div>
+          <div class="menu-path">/pages/query/stock.html</div>
+        </a>
+
+        <a class="menu-card card" href="/pages/repair/repair_work.html">
+          <div class="menu-title">보수 작업</div>
+          <div class="menu-desc">보수 작업 진행 및 현황 확인</div>
+          <div class="menu-path">/pages/repair/repair_work.html</div>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { checkAuth } from "/assets/js/core/auth.js";
+    import { renderNav, preparePageContent } from "/assets/js/core/nav.js";
+
+    checkAuth();
+    preparePageContent("app-nav", "page-content");
+
+    renderNav({
+      mountId: "app-nav",
+      pageTitle: "WMS 메인",
+      pageSubtitle: "Warehouse Management System"
+    });
+  </script>
+</body>
+</html>

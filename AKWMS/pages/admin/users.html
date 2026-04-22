@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>사용자 관리</title>
+  <link rel="stylesheet" href="/assets/css/wms-ui.css" />
+  <style>
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:"Malgun Gothic","Apple SD Gothic Neo",sans-serif;
+      background:#f4f6fb;
+      color:#111827;
+    }
+    .page{
+      max-width:1400px;
+      margin:0 auto;
+      padding:24px;
+    }
+    .topbar{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      margin-bottom:20px;
+      flex-wrap:wrap;
+    }
+    .title-box h1{
+      margin:0;
+      font-size:28px;
+    }
+    .title-box p{
+      margin:6px 0 0;
+      color:#6b7280;
+      font-size:14px;
+    }
+    .user-box{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .chip{
+      background:#fff;
+      border:1px solid #dbe2ea;
+      border-radius:10px;
+      padding:8px 12px;
+      font-size:13px;
+    }
+    .btn{
+      border:none;
+      background:#2563eb;
+      color:#fff;
+      border-radius:10px;
+      padding:10px 14px;
+      font-size:14px;
+      cursor:pointer;
+    }
+    .btn.gray{
+      background:#6b7280;
+    }
+    .btn.red{
+      background:#dc2626;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns:360px 1fr;
+      gap:20px;
+    }
+    .card{
+      background:#fff;
+      border:1px solid #dbe2ea;
+      border-radius:16px;
+      padding:18px;
+      box-shadow:0 6px 20px rgba(0,0,0,.04);
+    }
+    .card h2{
+      margin:0 0 14px;
+      font-size:18px;
+    }
+    .form-row{
+      margin-bottom:12px;
+    }
+    .form-row label{
+      display:block;
+      margin-bottom:6px;
+      font-size:13px;
+      color:#4b5563;
+      font-weight:700;
+    }
+    .input, .select{
+      width:100%;
+      height:42px;
+      border:1px solid #cfd8e3;
+      border-radius:10px;
+      padding:0 12px;
+      background:#fff;
+      font-size:14px;
+    }
+    .check-row{
+      display:flex;
+      gap:14px;
+      align-items:center;
+      margin:10px 0 16px;
+      font-size:14px;
+    }
+    .action-row{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+    .status{
+      margin-top:12px;
+      font-size:13px;
+      color:#2563eb;
+      min-height:20px;
+    }
+    .toolbar{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      margin-bottom:12px;
+      flex-wrap:wrap;
+    }
+    .search{
+      width:260px;
+      max-width:100%;
+      height:40px;
+      border:1px solid #cfd8e3;
+      border-radius:10px;
+      padding:0 12px;
+      font-size:14px;
+      background:#fff;
+    }
+    .table-wrap{
+      overflow:auto;
+      border:1px solid #e5e7eb;
+      border-radius:12px;
+      background:#fff;
+    }
+    table{
+      width:100%;
+      border-collapse:collapse;
+      min-width:820px;
+    }
+    th, td{
+      padding:12px 10px;
+      border-bottom:1px solid #eef2f7;
+      text-align:left;
+      font-size:14px;
+      white-space:nowrap;
+    }
+    th{
+      background:#f8fafc;
+      color:#334155;
+      font-weight:700;
+      position:sticky;
+      top:0;
+      z-index:1;
+    }
+    .badge{
+      display:inline-block;
+      padding:5px 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:700;
+    }
+    .badge.admin{ background:#dbeafe; color:#1d4ed8; }
+    .badge.worker{ background:#dcfce7; color:#15803d; }
+    .badge.viewer{ background:#f3f4f6; color:#4b5563; }
+    .badge.use-true{ background:#ecfdf5; color:#047857; }
+    .badge.use-false{ background:#fef2f2; color:#b91c1c; }
+    .row-btn{
+      border:none;
+      border-radius:8px;
+      padding:7px 10px;
+      font-size:12px;
+      cursor:pointer;
+      margin-right:4px;
+    }
+    .row-btn.edit{ background:#dbeafe; color:#1d4ed8; }
+    .row-btn.stop{ background:#fee2e2; color:#b91c1c; }
+    .row-btn.use{ background:#dcfce7; color:#15803d; }
+
+    @media (max-width: 980px){
+      .grid{ grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="topbar">
+      <div class="title-box">
+        <h1>사용자 관리</h1>
+        <p>관리자만 사용자 추가 / 수정 / 사용중지 가능</p>
+      </div>
+
+      <div class="user-box">
+        <div class="chip">사용자: <strong data-user-name></strong></div>
+        <div class="chip">권한: <strong data-user-role></strong></div>
+        <button class="btn gray" type="button" onclick="location.href='/main.html'">메인</button>
+        <button class="btn red" type="button" data-logout>로그아웃</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>사용자 등록 / 수정</h2>
+
+        <div class="form-row">
+          <label for="user-id">ID</label>
+          <input id="user-id" class="input" type="text" placeholder="예: scan03">
+        </div>
+
+        <div class="form-row">
+          <label for="user-pw">비밀번호</label>
+          <input id="user-pw" class="input" type="text" placeholder="비밀번호">
+        </div>
+
+        <div class="form-row">
+          <label for="user-name">이름</label>
+          <input id="user-name" class="input" type="text" placeholder="예: 검수3">
+        </div>
+
+        <div class="form-row">
+          <label for="user-role">권한</label>
+          <select id="user-role" class="select">
+            <option value="worker">worker</option>
+            <option value="viewer">viewer</option>
+            <option value="admin">admin</option>
+          </select>
+        </div>
+
+        <div class="check-row">
+          <label><input id="user-admin" type="checkbox"> 관리자</label>
+          <label><input id="user-use" type="checkbox" checked> 사용중</label>
+        </div>
+
+        <div class="action-row">
+          <button id="save-btn" class="btn" type="button">저장</button>
+          <button id="new-btn" class="btn gray" type="button">신규</button>
+          <button id="reset-btn" class="btn red" type="button">초기계정복원</button>
+        </div>
+
+        <div id="status" class="status"></div>
+      </div>
+
+      <div class="card">
+        <div class="toolbar">
+          <h2 style="margin:0">사용자 목록</h2>
+          <input id="search-input" class="search" type="text" placeholder="ID / 이름 검색">
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>이름</th>
+                <th>권한</th>
+                <th>관리자</th>
+                <th>사용여부</th>
+                <th>비밀번호</th>
+                <th>관리</th>
+              </tr>
+            </thead>
+            <tbody id="user-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initSession } from "/assets/js/core/session.js";
+    import { getLoginUser } from "/assets/js/core/auth.js";
+    import {
+      getUsers,
+      addUser,
+      updateUser,
+      resetUsers
+    } from "/assets/js/core/users.js";
+
+    initSession();
+
+    const loginUser = getLoginUser();
+    if (!loginUser || loginUser.admin !== true) {
+      alert("관리자만 접근 가능합니다.");
+      location.href = "/main.html";
+    }
+
+    const $id = document.getElementById("user-id");
+    const $pw = document.getElementById("user-pw");
+    const $name = document.getElementById("user-name");
+    const $role = document.getElementById("user-role");
+    const $admin = document.getElementById("user-admin");
+    const $use = document.getElementById("user-use");
+    const $tbody = document.getElementById("user-tbody");
+    const $search = document.getElementById("search-input");
+    const $status = document.getElementById("status");
+    const $saveBtn = document.getElementById("save-btn");
+    const $newBtn = document.getElementById("new-btn");
+    const $resetBtn = document.getElementById("reset-btn");
+
+    let editingId = "";
+
+    renderTable();
+
+    $saveBtn.addEventListener("click", onSave);
+    $newBtn.addEventListener("click", resetForm);
+    $resetBtn.addEventListener("click", onResetUsers);
+    $search.addEventListener("input", renderTable);
+
+    function onSave() {
+      try {
+        const data = {
+          id: $id.value.trim(),
+          pw: $pw.value.trim(),
+          name: $name.value.trim(),
+          role: $role.value,
+          admin: $admin.checked,
+          use: $use.checked
+        };
+
+        if (data.admin) data.role = "admin";
+
+        if (!editingId) {
+          addUser(data);
+          setStatus("사용자 등록 완료");
+        } else {
+          updateUser(editingId, data);
+          setStatus("사용자 수정 완료");
+        }
+
+        resetForm();
+        renderTable();
+      } catch (err) {
+        setStatus(err.message || "저장 실패");
+      }
+    }
+
+    function onResetUsers() {
+      if (!confirm("초기 계정으로 복원할까요?")) return;
+      resetUsers();
+      resetForm();
+      renderTable();
+      setStatus("초기 계정 복원 완료");
+    }
+
+    function renderTable() {
+      const keyword = $search.value.trim().toLowerCase();
+      const users = getUsers().filter(user => {
+        if (!keyword) return true;
+        return (
+          String(user.id || "").toLowerCase().includes(keyword) ||
+          String(user.name || "").toLowerCase().includes(keyword)
+        );
+      });
+
+      $tbody.innerHTML = users.map(user => `
+        <tr>
+          <td>${escapeHtml(user.id)}</td>
+          <td>${escapeHtml(user.name)}</td>
+          <td><span class="badge ${escapeHtml(user.role)}">${escapeHtml(user.role)}</span></td>
+          <td>${user.admin ? "Y" : "-"}</td>
+          <td><span class="badge use-${user.use ? "true" : "false"}">${user.use ? "사용중" : "중지"}</span></td>
+          <td>${escapeHtml(user.pw)}</td>
+          <td>
+            <button class="row-btn edit" type="button" data-edit="${escapeHtml(user.id)}">수정</button>
+            ${
+              user.use
+              ? `<button class="row-btn stop" type="button" data-stop="${escapeHtml(user.id)}">중지</button>`
+              : `<button class="row-btn use" type="button" data-use="${escapeHtml(user.id)}">사용</button>`
+            }
+          </td>
+        </tr>
+      `).join("");
+
+      bindRowEvents();
+    }
+
+    function bindRowEvents() {
+      document.querySelectorAll("[data-edit]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const id = btn.dataset.edit;
+          const user = getUsers().find(u => u.id === id);
+          if (!user) return;
+
+          editingId = user.id;
+          $id.value = user.id || "";
+          $pw.value = user.pw || "";
+          $name.value = user.name || "";
+          $role.value = user.role || "worker";
+          $admin.checked = !!user.admin;
+          $use.checked = !!user.use;
+
+          setStatus(`수정모드: ${user.id}`);
+        });
+      });
+
+      document.querySelectorAll("[data-stop]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const id = btn.dataset.stop;
+          updateUser(id, { use: false });
+          renderTable();
+          setStatus(`사용중지: ${id}`);
+        });
+      });
+
+      document.querySelectorAll("[data-use]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const id = btn.dataset.use;
+          updateUser(id, { use: true });
+          renderTable();
+          setStatus(`사용재개: ${id}`);
+        });
+      });
+    }
+
+    function resetForm() {
+      editingId = "";
+      $id.value = "";
+      $pw.value = "";
+      $name.value = "";
+      $role.value = "worker";
+      $admin.checked = false;
+      $use.checked = true;
+      setStatus("신규 등록 모드");
+    }
+
+    function setStatus(message) {
+      $status.textContent = message || "";
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
+  </script>
+</body>
+</html>
