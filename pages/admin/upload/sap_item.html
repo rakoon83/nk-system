@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SAP 자재 업로드</title>
+
+  <link rel="stylesheet" href="/assets/css/font.css">
+  <link rel="stylesheet" href="/assets/css/common.css">
+  <link rel="stylesheet" href="/assets/css/nav.css?v=20260422">
+  <link rel="stylesheet" href="/assets/css/topbar.css">
+  <link rel="stylesheet" href="/assets/css/toolbar.css">
+  <link rel="stylesheet" href="/assets/css/table.css">
+  <link rel="stylesheet" href="/assets/css/modal.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+    }
+
+    body {
+      overflow: auto;
+    }
+
+    #page-content,
+    .wms-page-content {
+      height: 100%;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sap-item-page {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+      overflow: hidden;
+    }
+
+    #page-topbar,
+    #sap-item-toolbar,
+    #page-status {
+      flex: 0 0 auto;
+    }
+
+    .table-shell {
+      overflow: auto !important;
+    }
+
+    #print-area.table-shell {
+      flex: 1 1 auto;
+      min-height: 0;
+      min-width: 0;
+      height: 0;
+      overflow: auto !important;
+    }
+
+    #sap-item-table {
+      min-width: 1700px;
+      width: 100%;
+    }
+    
+   
+.row-under-70 td {
+  background: #fff6f6;
+}
+
+
+.row-under-70:hover td {
+  background: #ffecec;
+}
+
+
+.row-under-70 td[data-col-key="expiry_rate"] {
+  background: #ffe3e3;
+  color: #c62828;
+  font-weight: 700;
+}
+
+
+
+
+    .sap-item-table col:nth-child(1) { width: 44px; }
+    .sap-item-table col:nth-child(2) { width: 80px; }
+    .sap-item-table col:nth-child(3) { width: 140px; }
+    .sap-item-table col:nth-child(4) { width: 90px; }
+    .sap-item-table col:nth-child(5) { width: 120px; }
+    .sap-item-table col:nth-child(6) { width: 280px; }
+    .sap-item-table col:nth-child(7) { width: 90px; }
+    .sap-item-table col:nth-child(8) { width: 90px; }
+    .sap-item-table col:nth-child(9) { width: 90px; }
+    .sap-item-table col:nth-child(10) { width: 90px; }
+    .sap-item-table col:nth-child(11) { width: 90px; }
+    .sap-item-table col:nth-child(12) { width: 90px; }
+    .sap-item-table col:nth-child(13) { width: 90px; }
+    .sap-item-table col:nth-child(14) { width: 220px; }
+    .sap-item-table col:nth-child(15) { width: 180px; }
+  </style>
+</head>
+<body>
+  <div id="app-nav"></div>
+
+  <div id="page-content">
+    <div class="sap-item-page">
+      <div id="page-topbar"></div>
+      <div id="sap-item-toolbar"></div>
+
+      <div id="print-area" class="table-shell">
+        <table class="wms-table sap-item-table" id="sap-item-table">
+          <colgroup>
+            <col>
+            <col data-col-key="no">
+            <col data-col-key="invoice">
+            <col data-col-key="list_no">
+            <col data-col-key="material_no">
+            <col data-col-key="material_name">
+            <col data-col-key="outbound_qty">
+            <col data-col-key="product_qty">
+            <col data-col-key="outer_box_qty">
+            <col data-col-key="total_qty">
+            <col data-col-key="cbm">
+            <col data-col-key="packing">
+            <col data-col-key="weight">
+            <col data-col-key="note">
+            <col data-col-key="created_at">
+          </colgroup>
+
+          <thead>
+            <tr>
+              <th>
+                <div class="th-inner th-center">
+                  <input type="checkbox" class="chk" id="chk-all">
+                </div>
+              </th>
+
+              <th data-col-key="no">
+                <div class="th-inner">
+                  <span class="th-label">NO</span>
+                  <span class="sort-mark">↕</span>
+                  <span class="resize-handle"></span>
+                </div>
+              </th>
+
+              <th data-col-key="invoice">
+                <div class="th-inner">
+                  <span class="th-label">Invoice</span>
+                  <span class="sort-mark">↕</span>
+                  <span class="resize-handle"></span>
+                </div>
+              </th>
+
+              <th data-col-key="list_no">
+                <div class="th-inner">
+                  <span class="th-label">번호</span>
+                  <span class="sort-mark">↕</span>
+                  <span class="resize-handle"></span>
+                </div>
+              </th>
+
+              <th data-col-key="material_no">
+                <div class="th-inner">
+                  <span class="th-label">코드</span>
+                  <span class="sort-mark">↕</span>
+                  <span class="resize-handle"></span>
+                </div>
+              </th>
+
+              <th data-col-key="material_name">
+                <div class="th-inner">
+                  <span class="th-label">자재내역</span>
+                  <span class="sort-mark">↕</span>
+                  <span class="resize-handle"></span>
+                </div>
+              </th>
+
+              <th data-col-key="outbound_qty">
+                <div class="th-inner">
+                  <span class="th-label">출고</span>
+                  <span class="sort-mark">↕</span>
+                  <span class="resize-handle"></span>
+                </div>
+              </th>
+
+              <th data-col-key="product_qty">
+                <div class="th-inner">
+                  <span class="th-label">제품</span>
+                  <span class="sort-mark">↕</span>
+                  <span class="resize-handle"></span>
+                </div>
+              </th>
+
+              <th data-col-key="outer_box_qty">
+                <div class="th-inner">
+                  <span class="th-label">외박스</span>
+                  <span class="sort-mark">↕</span>
+                  <span class="resize-handle"></span>
+                </div>
+              </th>
+
+              <th data-col-key="total_qty">
+                <div class="th-inner">
+                  <span class="th-label">합계</span>
+                  <span class="sort-mark">↕</span>
+                  <span class="resize-handle"></span>
+                </div>
+              </th>
+
+              <th data-col-key="cbm">
+                <div class="th-inner">
+                  <span class="th-label">CBM</span>
+                  <span class="sort-mark">↕</span>
+                  <span class="resize-handle"></span>
+                </div>
+              </th>
+
+              <th data-col-key="packing">
+                <div class="th-inner">
+                  <span class="th-label">중량</span>
+                  <span class="sort-mark">↕</span>
+                  <span class="resize-handle"></span>
+                </div>
+              </th>
+
+              <th data-col-key="weight">
+                <div class="th-inner">
+                  <span class="th-label">단위</span>
+                  <span class="sort-mark">↕</span>
+                  <span class="resize-handle"></span>
+                </div>
+              </th>
+
+              <th data-col-key="note">
+                <div class="th-inner">
+                  <span class="th-label">비고</span>
+                  <span class="sort-mark">↕</span>
+                  <span class="resize-handle"></span>
+                </div>
+              </th>
+
+              <th data-col-key="created_at">
+                <div class="th-inner">
+                  <span class="th-label">등록일시</span>
+                  <span class="sort-mark">↕</span>
+                  <span class="resize-handle"></span>
+                </div>
+              </th>
+            </tr>
+          </thead>
+
+          <tbody id="sap-item-tbody"></tbody>
+        </table>
+      </div>
+
+      <div id="page-status" class="status-text no-print"></div>
+    </div>
+  </div>
+
+  <div id="modal-root"></div>
+
+  <script type="module" src="/assets/js/pages/admin/upload/sap_item.js?v=20260422"></script>
+</body>
+</html>
