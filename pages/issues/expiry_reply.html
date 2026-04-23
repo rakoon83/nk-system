@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>바코드 마스터</title>
+  <title>유통기한 회신</title>
 
   <link rel="icon" type="image/png" href="/assets/images/logo.png?v=1">
 
@@ -36,7 +36,7 @@
       flex-direction: column;
     }
 
-    .barcode-page {
+    .expiry-reply-page {
       flex: 1;
       min-height: 0;
       display: flex;
@@ -46,7 +46,7 @@
     }
 
     #page-topbar,
-    #barcode-toolbar,
+    #expiry-reply-toolbar,
     #page-status {
       flex: 0 0 auto;
     }
@@ -63,42 +63,69 @@
       overflow: auto !important;
     }
 
-    #barcode-table {
-      min-width: 1250px;
+    #expiry-reply-table {
+      min-width: 2100px;
       width: 100%;
     }
 
-    .barcode-table col:nth-child(1) { width: 44px; }
-    .barcode-table col:nth-child(2) { width: 80px; }
-    .barcode-table col:nth-child(3) { width: 170px; }
-    .barcode-table col:nth-child(4) { width: 150px; }
-    .barcode-table col:nth-child(5) { width: 320px; }
-    .barcode-table col:nth-child(6) { width: 110px; }
-    .barcode-table col:nth-child(7) { width: 140px; }
-    .barcode-table col:nth-child(8) { width: 220px; }
-    .barcode-table col:nth-child(9) { width: 180px; }
+    .expiry-reply-table col:nth-child(1) { width: 44px; }
+    .expiry-reply-table col:nth-child(2) { width: 80px; }
+    .expiry-reply-table col:nth-child(3) { width: 160px; }
+    .expiry-reply-table col:nth-child(4) { width: 120px; }
+    .expiry-reply-table col:nth-child(5) { width: 100px; }
+    .expiry-reply-table col:nth-child(6) { width: 160px; }
+    .expiry-reply-table col:nth-child(7) { width: 150px; }
+    .expiry-reply-table col:nth-child(8) { width: 320px; }
+    .expiry-reply-table col:nth-child(9) { width: 220px; }
+    .expiry-reply-table col:nth-child(10) { width: 140px; }
+    .expiry-reply-table col:nth-child(11) { width: 170px; }
+    .expiry-reply-table col:nth-child(12) { width: 170px; }
+    .expiry-reply-table col:nth-child(13) { width: 120px; }
+    .expiry-reply-table col:nth-child(14) { width: 240px; }
+
+    .reply-btn {
+      height: 28px;
+      padding: 0 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #fff;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .reply-btn.done {
+      background: #e0f2fe;
+      border-color: #7dd3fc;
+      color: #0369a1;
+      font-weight: 700;
+    }
   </style>
 </head>
 <body>
   <div id="app-nav"></div>
 
   <div id="page-content">
-    <div class="barcode-page">
+    <div class="expiry-reply-page">
       <div id="page-topbar"></div>
-      <div id="barcode-toolbar"></div>
+      <div id="expiry-reply-toolbar"></div>
 
       <div id="print-area" class="table-shell">
-        <table class="wms-table barcode-table" id="barcode-table">
+        <table class="wms-table expiry-reply-table" id="expiry-reply-table">
           <colgroup>
             <col>
             <col data-col-key="no">
+            <col data-col-key="invoice">
+            <col data-col-key="ship_date">
+            <col data-col-key="country">
             <col data-col-key="material_no">
             <col data-col-key="box_no">
             <col data-col-key="material_name">
-            <col data-col-key="pack_qty">
-            <col data-col-key="exp_date">
-            <col data-col-key="barcode">
+            <col data-col-key="customer_name">
+            <col data-col-key="manager">
             <col data-col-key="created_at">
+            <col data-col-key="reply_at">
+            <col data-col-key="reply_status">
+            <col data-col-key="note">
           </colgroup>
 
           <thead>
@@ -117,9 +144,33 @@
                 </div>
               </th>
 
+              <th data-col-key="invoice">
+                <div class="th-inner">
+                  <span class="th-label">로케이션</span>
+                  <span class="sort-mark">↕</span>
+                  <span class="resize-handle"></span>
+                </div>
+              </th>
+
+              <th data-col-key="ship_date">
+                <div class="th-inner">
+                  <span class="th-label">출고일</span>
+                  <span class="sort-mark">↕</span>
+                  <span class="resize-handle"></span>
+                </div>
+              </th>
+
+              <th data-col-key="country">
+                <div class="th-inner">
+                  <span class="th-label">국가</span>
+                  <span class="sort-mark">↕</span>
+                  <span class="resize-handle"></span>
+                </div>
+              </th>
+
               <th data-col-key="material_no">
                 <div class="th-inner">
-                  <span class="th-label">자재번호</span>
+                  <span class="th-label">코드</span>
                   <span class="sort-mark">↕</span>
                   <span class="resize-handle"></span>
                 </div>
@@ -141,25 +192,17 @@
                 </div>
               </th>
 
-              <th data-col-key="pack_qty">
+              <th data-col-key="customer_name">
                 <div class="th-inner">
-                  <span class="th-label">입수</span>
+                  <span class="th-label">납품처명</span>
                   <span class="sort-mark">↕</span>
                   <span class="resize-handle"></span>
                 </div>
               </th>
 
-              <th data-col-key="exp_date">
+              <th data-col-key="manager">
                 <div class="th-inner">
-                  <span class="th-label">유통기한</span>
-                  <span class="sort-mark">↕</span>
-                  <span class="resize-handle"></span>
-                </div>
-              </th>
-
-              <th data-col-key="barcode">
-                <div class="th-inner">
-                  <span class="th-label">바코드</span>
+                  <span class="th-label">담당자</span>
                   <span class="sort-mark">↕</span>
                   <span class="resize-handle"></span>
                 </div>
@@ -167,7 +210,31 @@
 
               <th data-col-key="created_at">
                 <div class="th-inner">
-                  <span class="th-label">등록일시</span>
+                  <span class="th-label">등록일</span>
+                  <span class="sort-mark">↕</span>
+                  <span class="resize-handle"></span>
+                </div>
+              </th>
+
+              <th data-col-key="reply_at">
+                <div class="th-inner">
+                  <span class="th-label">처리일</span>
+                  <span class="sort-mark">↕</span>
+                  <span class="resize-handle"></span>
+                </div>
+              </th>
+
+              <th data-col-key="reply_status">
+                <div class="th-inner">
+                  <span class="th-label">확인</span>
+                  <span class="sort-mark">↕</span>
+                  <span class="resize-handle"></span>
+                </div>
+              </th>
+
+              <th data-col-key="note">
+                <div class="th-inner">
+                  <span class="th-label">비고</span>
                   <span class="sort-mark">↕</span>
                   <span class="resize-handle"></span>
                 </div>
@@ -175,7 +242,7 @@
             </tr>
           </thead>
 
-          <tbody id="barcode-tbody"></tbody>
+          <tbody id="expiry-reply-tbody"></tbody>
         </table>
       </div>
 
@@ -185,6 +252,6 @@
 
   <div id="modal-root"></div>
 
-  <script type="module" src="/assets/js/pages/admin/master/barcode.js?v=20260423"></script>
+  <script type="module" src="/assets/js/pages/issues/expiry_reply.js?v=20260423_01"></script>
 </body>
 </html>
