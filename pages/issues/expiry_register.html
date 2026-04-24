@@ -19,141 +19,207 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
-  html, body {
-    height: 100%;
-    margin: 0;
-  }
+    html, body{
+  height:100%;
+  margin:0;
+}
 
-  body {
-    overflow: auto;
+body{
+  overflow:auto;
+}
+
+/* 페이지 구조 */
+#page-content,
+.wms-page-content{
+  height:100%;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+}
+
+.expiry-register-page{
+  flex:1;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  background:#fff;
+  overflow:hidden;
+}
+
+#page-topbar,
+#expiry-register-toolbar,
+#page-status{
+  flex:0 0 auto;
+}
+
+/* 테이블 영역 */
+.table-shell{
+  overflow:auto !important;
+}
+
+#print-area.table-shell{
+  flex:1 1 auto;
+  min-height:0;
+  min-width:0;
+  height:0;
+  overflow:auto !important;
+}
+
+#expiry-register-table{
+  min-width:1450px;
+  width:100%;
+}
+
+.expiry-register-table col:nth-child(1){width:44px;}
+.expiry-register-table col:nth-child(2){width:80px;}
+.expiry-register-table col:nth-child(3){width:100px;}
+.expiry-register-table col:nth-child(4){width:170px;}
+.expiry-register-table col:nth-child(5){width:150px;}
+.expiry-register-table col:nth-child(6){width:320px;}
+.expiry-register-table col:nth-child(7){width:220px;}
+.expiry-register-table col:nth-child(8){width:140px;}
+.expiry-register-table col:nth-child(9){width:220px;}
+
+/* -------------------- */
+/* 태블릿 대응 */
+/* -------------------- */
+
+@media (max-width:1024px){
+
+  html,body{
+    height:auto;
+    min-height:100%;
   }
 
   #page-content,
-  .wms-page-content {
-    height: 100%;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
+  .wms-page-content{
+    height:auto;
+    min-height:100vh;
   }
 
-  .expiry-register-page {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
-    background: #fff;
-    overflow: hidden;
+  .expiry-register-page{
+    height:auto;
+    min-height:100vh;
   }
 
-  #page-topbar,
-  #expiry-register-toolbar,
-  #page-status {
-    flex: 0 0 auto;
+  #print-area.table-shell{
+    height:auto !important;
+    min-height:520px;
+    flex:0 0 auto;
   }
 
-  .table-shell {
-    overflow: auto !important;
+}
+
+/* -------------------- */
+/* 모바일 대응 */
+/* -------------------- */
+
+@media (max-width:640px){
+
+  #expiry-register-toolbar{
+    background:#fff;
+    overflow:visible !important;
   }
 
-  #print-area.table-shell {
-    flex: 1 1 auto;
-    min-height: 0;
-    min-width: 0;
-    height: 0;
-    overflow: auto !important;
+  /* toolbar 전체 세로구조 */
+  #expiry-register-toolbar .toolbar-row,
+  #expiry-register-toolbar .toolbar-inner,
+  #expiry-register-toolbar .toolbar-content{
+    display:flex !important;
+    flex-direction:column !important;
+    gap:8px !important;
+    width:100% !important;
   }
 
-  #expiry-register-table {
-    min-width: 1450px;
-    width: 100%;
+  /* 버튼 영역 */
+  #expiry-register-toolbar .toolbar-left,
+  #expiry-register-toolbar .toolbar-actions{
+    display:flex !important;
+    flex-wrap:wrap !important;
+    gap:6px !important;
+    width:100% !important;
+    order:1;
   }
 
-  .expiry-register-table col:nth-child(1) { width: 44px; }
-  .expiry-register-table col:nth-child(2) { width: 80px; }
-  .expiry-register-table col:nth-child(3) { width: 100px; }
-  .expiry-register-table col:nth-child(4) { width: 170px; }
-  .expiry-register-table col:nth-child(5) { width: 150px; }
-  .expiry-register-table col:nth-child(6) { width: 320px; }
-  .expiry-register-table col:nth-child(7) { width: 220px; }
-  .expiry-register-table col:nth-child(8) { width: 140px; }
-  .expiry-register-table col:nth-child(9) { width: 220px; }
-
-  @media (max-width: 640px) {
-    .wms-modal,
-    .modal,
-    .wms-modal-box,
-    .modal-box {
-      width: calc(100vw - 24px) !important;
-      max-width: calc(100vw - 24px) !important;
-    }
-
-    .wms-form-grid {
-      grid-template-columns: 1fr !important;
-    }
-
-    .wms-form-row,
-    .wms-form-row.full {
-      grid-column: 1 / -1 !important;
-      min-width: 0;
-    }
-
-    .wms-form-input,
-    .wms-form-textarea {
-      width: 100% !important;
-      min-width: 0 !important;
-      box-sizing: border-box;
-    }
-
-    .wms-form-textarea {
-      min-height: 260px;
-    }
-
-    .wms-modal-body,
-    .modal-body {
-      max-height: 70vh;
-      overflow: auto;
-    }
-
-    html,
-    body {
-      height: auto;
-      min-height: 100%;
-      overflow: auto;
-    }
-
-    #page-content,
-    .wms-page-content {
-      height: auto;
-      min-height: 100vh;
-      overflow: visible;
-    }
-
-    .expiry-register-page {
-      height: auto;
-      min-height: 100vh;
-      overflow: visible;
-    }
-
-    #expiry-register-toolbar {
-      position: sticky;
-      top: 0;
-      z-index: 20;
-      background: #fff;
-    }
-
-    #print-area.table-shell {
-      height: auto !important;
-      min-height: 420px;
-      max-height: none;
-      flex: 0 0 auto;
-      overflow: auto !important;
-    }
-
-    #expiry-register-table {
-      min-width: 1450px;
-    }
+  /* 검색 영역 */
+  #expiry-register-toolbar .toolbar-search,
+  #expiry-register-toolbar .search-box,
+  #expiry-register-toolbar .toolbar-search-box,
+  #expiry-register-toolbar .search-wrap{
+    width:100% !important;
+    order:2;
   }
-</style>
+
+  #expiry-register-toolbar input[type="search"],
+  #expiry-register-toolbar input[type="text"],
+  #expiry-register-toolbar #toolbar-search-input{
+    width:100% !important;
+    max-width:100% !important;
+  }
+
+  /* 사용자 표시 */
+  #expiry-register-toolbar .toolbar-user,
+  #expiry-register-toolbar .current-user,
+  #expiry-register-toolbar .toolbar-current-user,
+  #expiry-register-toolbar .user-info,
+  #expiry-register-toolbar [class*="user"]{
+    width:100% !important;
+    text-align:right !important;
+    order:3;
+    font-size:13px;
+  }
+
+  #expiry-register-toolbar button,
+  #expiry-register-toolbar .icon-btn{
+    flex:0 0 auto !important;
+  }
+
+  #print-area.table-shell{
+    min-height:460px;
+  }
+
+}
+
+/* -------------------- */
+/* 모바일 모달 */
+/* -------------------- */
+
+@media (max-width:640px){
+
+  .wms-modal,
+  .modal,
+  .wms-modal-box,
+  .modal-box{
+    width:calc(100vw - 24px) !important;
+    max-width:calc(100vw - 24px) !important;
+  }
+
+  .wms-form-grid{
+    grid-template-columns:1fr !important;
+  }
+
+  .wms-form-row,
+  .wms-form-row.full{
+    grid-column:1 / -1 !important;
+  }
+
+  .wms-form-input,
+  .wms-form-textarea{
+    width:100% !important;
+  }
+
+  .wms-form-textarea{
+    min-height:260px;
+  }
+
+  .wms-modal-body,
+  .modal-body{
+    max-height:70vh;
+    overflow:auto;
+  }
+
+}
+  </style>
 </head>
 <body>
   <div id="app-nav"></div>
@@ -261,6 +327,6 @@
 
   <div id="modal-root"></div>
 
-  <script type="module" src="/assets/js/pages/issues/expiry_register.js?v=20260423_07"></script>
+  <script type="module" src="/assets/js/pages/issues/expiry_register.js?v=20260423_16"></script>
 </body>
 </html>

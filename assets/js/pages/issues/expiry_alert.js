@@ -722,6 +722,10 @@ function getRowClass(row) {
       return "row-under-50";
     }
 
+    if (row.expiry_rate < 60) {
+      return "row-under-60";
+    }
+
     if (row.expiry_rate < 70) {
       return "row-under-70";
     }

@@ -1,330 +1,321 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>유통기한 알림</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>유통기한 알림</title>
 
-  <link rel="icon" type="image/png" href="/assets/images/logo.png?v=1">
+<link rel="icon" type="image/png" href="/assets/images/logo.png?v=1">
 
-  <link rel="stylesheet" href="/assets/css/font.css">
-  <link rel="stylesheet" href="/assets/css/common.css">
-  <link rel="stylesheet" href="/assets/css/nav.css?v=20260423">
-  <link rel="stylesheet" href="/assets/css/topbar.css">
-  <link rel="stylesheet" href="/assets/css/toolbar.css">
-  <link rel="stylesheet" href="/assets/css/table.css">
+<link rel="stylesheet" href="/assets/css/font.css">
+<link rel="stylesheet" href="/assets/css/common.css">
+<link rel="stylesheet" href="/assets/css/nav.css?v=20260422">
+<link rel="stylesheet" href="/assets/css/topbar.css">
+<link rel="stylesheet" href="/assets/css/toolbar.css">
+<link rel="stylesheet" href="/assets/css/table.css">
 
-  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <style>
-    html, body {
-      height: 100%;
-      margin: 0;
-    }
+<style>
 
-    body {
-      overflow: auto;
-    }
+html,body{
+height:100%;
+margin:0;
+}
 
-    #page-content,
-    .wms-page-content {
-      height: 100%;
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
-      overflow: visible;
-    }
+body{
+overflow:auto;
+}
 
-    .expiry-alert-page {
-      flex: 1;
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
-      background: #fff;
-      overflow: visible;
-    }
+#page-content,
+.wms-page-content{
+height:100%;
+min-height:0;
+display:flex;
+flex-direction:column;
+}
 
-    #page-topbar,
-    #expiry-alert-toolbar,
-    #page-status {
-      flex: 0 0 auto;
-    }
+.expiry-alert-page{
+flex:1;
+min-height:0;
+display:flex;
+flex-direction:column;
+background:#fff;
+overflow:hidden;
+}
 
-    .table-shell {
-      overflow: auto !important;
-    }
+#page-topbar,
+#expiry-alert-toolbar,
+#page-status{
+flex:0 0 auto;
+}
 
-    #print-area.table-shell {
-      flex: 1 1 auto;
-      min-height: 0;
-      min-width: 0;
-      height: 0;
-      overflow: auto !important;
-    }
+.table-shell{
+overflow:auto !important;
+}
 
-    #expiry-alert-table {
-      min-width: 1800px;
-      width: 100%;
-    }
+#print-area.table-shell{
+flex:1 1 auto;
+min-height:0;
+min-width:0;
+height:0;
+overflow:auto !important;
+}
 
-    .expiry-alert-table col:nth-child(1)  { width: 44px; }
-    .expiry-alert-table col:nth-child(2)  { width: 70px; }
-    .expiry-alert-table col:nth-child(3)  { width: 140px; }
-    .expiry-alert-table col:nth-child(4)  { width: 110px; }
-    .expiry-alert-table col:nth-child(5)  { width: 90px; }
-    .expiry-alert-table col:nth-child(6)  { width: 110px; }
-    .expiry-alert-table col:nth-child(7)  { width: 120px; }
-    .expiry-alert-table col:nth-child(8)  { width: 120px; }
-    .expiry-alert-table col:nth-child(9)  { width: 320px; }
-    .expiry-alert-table col:nth-child(10) { width: 90px; }
-    .expiry-alert-table col:nth-child(11) { width: 110px; }
-    .expiry-alert-table col:nth-child(12) { width: 110px; }
-    .expiry-alert-table col:nth-child(13) { width: 90px; }
-    .expiry-alert-table col:nth-child(14) { width: 90px; }
-    .expiry-alert-table col:nth-child(15) { width: 90px; }
+#expiry-alert-table{
+min-width:1800px;
+width:100%;
+}
 
-    .rate-low {
-      color: #d92d20;
-      font-weight: 700;
-    }
+.expiry-alert-table col:nth-child(1){width:44px;}
+.expiry-alert-table col:nth-child(2){width:70px;}
+.expiry-alert-table col:nth-child(3){width:140px;}
+.expiry-alert-table col:nth-child(4){width:110px;}
+.expiry-alert-table col:nth-child(5){width:90px;}
+.expiry-alert-table col:nth-child(6){width:110px;}
+.expiry-alert-table col:nth-child(7){width:120px;}
+.expiry-alert-table col:nth-child(8){width:120px;}
+.expiry-alert-table col:nth-child(9){width:320px;}
+.expiry-alert-table col:nth-child(10){width:90px;}
+.expiry-alert-table col:nth-child(11){width:110px;}
+.expiry-alert-table col:nth-child(12){width:110px;}
+.expiry-alert-table col:nth-child(13){width:90px;}
+.expiry-alert-table col:nth-child(14){width:90px;}
+.expiry-alert-table col:nth-child(15){width:90px;}
 
-    .rate-mid {
-      color: #b26b00;
-      font-weight: 700;
-    }
+.rate-low{
+color:#d92d20;
+font-weight:700;
+}
 
-    .rate-good {
-      color: #027a48;
-      font-weight: 700;
-    }
+.rate-mid{
+color:#b26b00;
+font-weight:700;
+}
 
-    .rate-check {
-      color: #6941c6;
-      font-weight: 700;
-    }
+.rate-good{
+color:#027a48;
+font-weight:700;
+}
 
-    /* 70% 미만 → 완전 연한 파랑 */
-    .row-under-70 td {
-      background: #f2f8ff;
-    }
+.rate-check{
+color:#6941c6;
+font-weight:700;
+}
 
-    .row-under-70:hover td {
-      background: #e8f2ff;
-    }
+/* 70% 미만 파랑 */
+#expiry-alert-table tbody tr.row-under-70 > td{
+background:#f2f8ff !important;
+}
 
-    .row-under-70 td[data-col-key="expiry_rate"] {
-      color: #1d4ed8;
-      font-weight: 700;
-    }
+#expiry-alert-table tbody tr.row-under-70:hover > td{
+background:#e8f2ff !important;
+}
 
-    /* 50% 미만 → 완전 연한 빨강 */
-    .row-under-50 td {
-      background: #fff2f2;
-    }
+/* 60% 미만 주황 */
+#expiry-alert-table tbody tr.row-under-60 > td{
+background:#fff7ed !important;
+}
 
-    .row-under-50:hover td {
-      background: #ffe6e6;
-    }
+#expiry-alert-table tbody tr.row-under-60:hover > td{
+background:#ffedd5 !important;
+}
 
-    .row-under-50 td[data-col-key="expiry_rate"] {
-      color: #dc2626;
-      font-weight: 700;
-    }
+/* 50% 미만 빨강 */
+#expiry-alert-table tbody tr.row-under-50 > td{
+background:#fff2f2 !important;
+}
 
-    /* 설정 버튼 / 패널 잘림 방지 */
-    #expiry-alert-toolbar {
-      position: relative;
-      z-index: 30;
-      overflow: visible !important;
-    }
+#expiry-alert-table tbody tr.row-under-50:hover > td{
+background:#ffe6e6 !important;
+}
 
-    #expiry-alert-toolbar .toolbar-row,
-    #expiry-alert-toolbar .toolbar-right,
-    #expiry-alert-toolbar .toolbar-actions,
-    #expiry-alert-toolbar .toolbar-panel,
-    #expiry-alert-toolbar .table-config-panel,
-    #expiry-alert-toolbar #table-config-panel {
-      overflow: visible !important;
-    }
+/* 잔존율 셀 글자 강조 */
+#expiry-alert-table tbody tr.row-under-70 > td[data-col-key="expiry_rate"]{
+color:#1d4ed8 !important;
+font-weight:800;
+}
 
-    #expiry-alert-toolbar .icon-btn,
-    #expiry-alert-toolbar button {
-      flex: 0 0 auto;
-    }
+#expiry-alert-table tbody tr.row-under-60 > td[data-col-key="expiry_rate"]{
+color:#c2410c !important;
+font-weight:800;
+}
 
-    #expiry-alert-toolbar .toolbar-panel,
-    #expiry-alert-toolbar .table-config-panel,
-    #expiry-alert-toolbar #table-config-panel {
-      position: absolute;
-      right: 8px;
-      left: auto;
-      top: calc(100% + 8px);
-      z-index: 9999;
-      max-height: min(70vh, 520px);
-      overflow: auto;
-    }
-  </style>
+#expiry-alert-table tbody tr.row-under-50 > td[data-col-key="expiry_rate"]{
+color:#dc2626 !important;
+font-weight:800;
+}
+
+@media (max-width:1024px){
+
+html,body{
+height:auto;
+min-height:100%;
+}
+
+#page-content,
+.wms-page-content{
+height:auto;
+min-height:100vh;
+}
+
+.expiry-alert-page{
+height:auto;
+min-height:100vh;
+}
+
+#print-area.table-shell{
+height:auto !important;
+min-height:520px;
+flex:0 0 auto;
+overflow:auto !important;
+}
+
+}
+
+@media (max-width:640px){
+
+#expiry-alert-toolbar{
+background:#fff;
+overflow:visible !important;
+}
+
+#expiry-alert-toolbar .toolbar-row,
+#expiry-alert-toolbar .toolbar-inner,
+#expiry-alert-toolbar .toolbar-content{
+display:flex !important;
+flex-direction:column !important;
+gap:8px !important;
+width:100% !important;
+}
+
+#expiry-alert-toolbar .toolbar-left,
+#expiry-alert-toolbar .toolbar-actions{
+display:flex !important;
+flex-wrap:wrap !important;
+gap:6px !important;
+width:100% !important;
+order:1;
+}
+
+#expiry-alert-toolbar .toolbar-search,
+#expiry-alert-toolbar .search-box,
+#expiry-alert-toolbar .toolbar-search-box,
+#expiry-alert-toolbar .search-wrap{
+width:100% !important;
+order:2;
+}
+
+#expiry-alert-toolbar input[type="search"],
+#expiry-alert-toolbar input[type="text"],
+#expiry-alert-toolbar #toolbar-search-input{
+width:100% !important;
+max-width:100% !important;
+}
+
+#expiry-alert-toolbar .toolbar-user,
+#expiry-alert-toolbar .current-user,
+#expiry-alert-toolbar .toolbar-current-user,
+#expiry-alert-toolbar .user-info,
+#expiry-alert-toolbar [class*="user"]{
+width:100% !important;
+text-align:right !important;
+order:3;
+font-size:13px;
+}
+
+#expiry-alert-toolbar button,
+#expiry-alert-toolbar .icon-btn{
+flex:0 0 auto !important;
+}
+
+#print-area.table-shell{
+height:60vh !important;
+min-height:460px;
+flex:0 0 auto;
+overflow:auto !important;
+}
+
+}
+
+</style>
 </head>
+
 <body>
-  <div id="app-nav"></div>
 
-  <div id="page-content">
-    <div class="expiry-alert-page">
-      <div id="page-topbar"></div>
-      <div id="expiry-alert-toolbar"></div>
+<div id="app-nav"></div>
 
-      <div id="print-area" class="table-shell">
-        <table class="wms-table expiry-alert-table" id="expiry-alert-table">
-          <colgroup>
-            <col>
-            <col data-col-key="no">
-            <col data-col-key="invoice">
-            <col data-col-key="ship_date">
-            <col data-col-key="country">
-            <col data-col-key="location">
-            <col data-col-key="material_no">
-            <col data-col-key="box_no">
-            <col data-col-key="material_name">
-            <col data-col-key="inbound_qty">
-            <col data-col-key="mfg_date">
-            <col data-col-key="exp_date">
-            <col data-col-key="remaining_days">
-            <col data-col-key="expiry_days">
-            <col data-col-key="expiry_rate">
-          </colgroup>
+<div id="page-content">
 
-          <thead>
-            <tr>
-              <th>
-                <div class="th-inner th-center">
-                  <input type="checkbox" class="chk" id="chk-all">
-                </div>
-              </th>
+<div class="expiry-alert-page">
 
-              <th data-col-key="no">
-                <div class="th-inner">
-                  <span class="th-label">NO</span>
-                  <span class="sort-mark">↕</span>
-                  <span class="resize-handle"></span>
-                </div>
-              </th>
+<div id="page-topbar"></div>
 
-              <th data-col-key="invoice">
-                <div class="th-inner">
-                  <span class="th-label">Invoice</span>
-                  <span class="sort-mark">↕</span>
-                  <span class="resize-handle"></span>
-                </div>
-              </th>
+<div id="expiry-alert-toolbar"></div>
 
-              <th data-col-key="ship_date">
-                <div class="th-inner">
-                  <span class="th-label">출고일</span>
-                  <span class="sort-mark">↕</span>
-                  <span class="resize-handle"></span>
-                </div>
-              </th>
+<div id="print-area" class="table-shell">
 
-              <th data-col-key="country">
-                <div class="th-inner">
-                  <span class="th-label">국가</span>
-                  <span class="sort-mark">↕</span>
-                  <span class="resize-handle"></span>
-                </div>
-              </th>
+<table class="wms-table expiry-alert-table" id="expiry-alert-table">
 
-              <th data-col-key="location">
-                <div class="th-inner">
-                  <span class="th-label">위치</span>
-                  <span class="sort-mark">↕</span>
-                  <span class="resize-handle"></span>
-                </div>
-              </th>
+<colgroup>
+<col>
+<col data-col-key="no">
+<col data-col-key="invoice">
+<col data-col-key="ship_date">
+<col data-col-key="country">
+<col data-col-key="location">
+<col data-col-key="material_no">
+<col data-col-key="box_no">
+<col data-col-key="material_name">
+<col data-col-key="inbound_qty">
+<col data-col-key="mfg_date">
+<col data-col-key="exp_date">
+<col data-col-key="remaining_days">
+<col data-col-key="expiry_days">
+<col data-col-key="expiry_rate">
+</colgroup>
 
-              <th data-col-key="material_no">
-                <div class="th-inner">
-                  <span class="th-label">코드</span>
-                  <span class="sort-mark">↕</span>
-                  <span class="resize-handle"></span>
-                </div>
-              </th>
+<thead>
+<tr>
 
-              <th data-col-key="box_no">
-                <div class="th-inner">
-                  <span class="th-label">박스번호</span>
-                  <span class="sort-mark">↕</span>
-                  <span class="resize-handle"></span>
-                </div>
-              </th>
+<th>
+<div class="th-inner th-center">
+<input type="checkbox" class="chk" id="chk-all">
+</div>
+</th>
 
-              <th data-col-key="material_name">
-                <div class="th-inner">
-                  <span class="th-label">자재내역</span>
-                  <span class="sort-mark">↕</span>
-                  <span class="resize-handle"></span>
-                </div>
-              </th>
+<th data-col-key="no"><div class="th-inner"><span class="th-label">NO</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+<th data-col-key="invoice"><div class="th-inner"><span class="th-label">Invoice</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+<th data-col-key="ship_date"><div class="th-inner"><span class="th-label">출고일</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+<th data-col-key="country"><div class="th-inner"><span class="th-label">국가</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+<th data-col-key="location"><div class="th-inner"><span class="th-label">위치</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+<th data-col-key="material_no"><div class="th-inner"><span class="th-label">코드</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+<th data-col-key="box_no"><div class="th-inner"><span class="th-label">박스번호</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+<th data-col-key="material_name"><div class="th-inner"><span class="th-label">자재내역</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+<th data-col-key="inbound_qty"><div class="th-inner"><span class="th-label">수량</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+<th data-col-key="mfg_date"><div class="th-inner"><span class="th-label">제조일자</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+<th data-col-key="exp_date"><div class="th-inner"><span class="th-label">유통기한</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+<th data-col-key="remaining_days"><div class="th-inner"><span class="th-label">잔여일</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+<th data-col-key="expiry_days"><div class="th-inner"><span class="th-label">기준일</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+<th data-col-key="expiry_rate"><div class="th-inner"><span class="th-label">잔존율</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
 
-              <th data-col-key="inbound_qty">
-                <div class="th-inner">
-                  <span class="th-label">수량</span>
-                  <span class="sort-mark">↕</span>
-                  <span class="resize-handle"></span>
-                </div>
-              </th>
+</tr>
+</thead>
 
-              <th data-col-key="mfg_date">
-                <div class="th-inner">
-                  <span class="th-label">제조일자</span>
-                  <span class="sort-mark">↕</span>
-                  <span class="resize-handle"></span>
-                </div>
-              </th>
+<tbody id="expiry-alert-tbody"></tbody>
 
-              <th data-col-key="exp_date">
-                <div class="th-inner">
-                  <span class="th-label">유통기한</span>
-                  <span class="sort-mark">↕</span>
-                  <span class="resize-handle"></span>
-                </div>
-              </th>
+</table>
 
-              <th data-col-key="remaining_days">
-                <div class="th-inner">
-                  <span class="th-label">잔여일</span>
-                  <span class="sort-mark">↕</span>
-                  <span class="resize-handle"></span>
-                </div>
-              </th>
+</div>
 
-              <th data-col-key="expiry_days">
-                <div class="th-inner">
-                  <span class="th-label">기준일</span>
-                  <span class="sort-mark">↕</span>
-                  <span class="resize-handle"></span>
-                </div>
-              </th>
+<div id="page-status" class="status-text no-print"></div>
 
-              <th data-col-key="expiry_rate">
-                <div class="th-inner">
-                  <span class="th-label">잔존율</span>
-                  <span class="sort-mark">↕</span>
-                  <span class="resize-handle"></span>
-                </div>
-              </th>
-            </tr>
-          </thead>
+</div>
 
-          <tbody id="expiry-alert-tbody"></tbody>
-        </table>
-      </div>
+</div>
 
-      <div id="page-status" class="status-text no-print"></div>
-    </div>
-  </div>
+<script type="module" src="/assets/js/pages/issues/expiry_alert.js?v=20260424_03"></script>
 
-  <script type="module" src="/assets/js/pages/issues/expiry_alert.js?v=20260423_06"></script>
 </body>
 </html>

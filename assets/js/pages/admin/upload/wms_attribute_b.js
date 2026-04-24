@@ -18,7 +18,6 @@ const SUPABASE_KEY = "sb_publishable_Hzk4cMVV-7hFDP_ehgqh_A_CFcQm-A1";
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const TABLE_NAME = "wms_attribute_b";
-
 const FETCH_PAGE_SIZE = 1000;
 const RENDER_PAGE_SIZE = 500;
 
@@ -28,6 +27,7 @@ const currentUserName = loginUser?.name || loginUser?.id || "-";
 const tbody = document.getElementById("wms-attribute-b-tbody");
 const printArea = document.getElementById("print-area");
 
+let editId = "";
 let allRows = [];
 let filteredRowsCache = [];
 let renderedCount = 0;
@@ -35,21 +35,21 @@ let isAppending = false;
 
 createTopbar({
   mountId: "page-topbar",
-  title: "WMS 속성 업로드",
-  subtitle: "wms_attribute_b / Supabase",
+  title: "WMS 속성 B 업로드",
+  subtitle: "wms_attribute_b / Supabase 연동",
   rightHtml: `<div class="wms-topbar-chip">DB<strong>SUPABASE</strong></div>`
 });
 
 const toolbar = createToolbar({
   mountId: "wms-attribute-b-toolbar",
   currentUserName,
-  searchPlaceholder: "Invoice / 코드 / 자재내역 검색",
+  searchPlaceholder: "Invoice / 코드 / 박스번호 / 자재내역 검색",
   buttons: {
-    add: false,
-    paste: false,
-    edit: false,
+    add: true,
+    paste: true,
+    edit: true,
     remove: true,
-    sum: false,
+    sum: true,
     download: true,
     print: true,
     config: true,
@@ -66,23 +66,22 @@ const tableManager = createTableManager({
   searchInputId: "toolbar-search-input",
   configButtonId: "table-config-btn",
   configPanelId: "table-config-panel",
-  storageKey: "wms_attribute_b_columns",
+  storageKey: "wms_attribute_b_table_columns",
   defaultSortKey: "id",
   defaultSortDir: "desc",
-
   columns: [
     { key: "no", label: "NO", width: 70, visible: true },
-    { key: "invoice", label: "Invoice", width: 150, visible: true },
+    { key: "invoice", label: "Invoice", width: 160, visible: true },
     { key: "material_no", label: "코드", width: 140, visible: true },
     { key: "box_no", label: "박스번호", width: 140, visible: true },
-    { key: "material_name", label: "자재내역", width: 350, visible: true },
+    { key: "material_name", label: "자재내역", width: 320, visible: true },
     { key: "inbound_qty", label: "수량", width: 100, visible: true },
     { key: "mfg_date", label: "제조일자", width: 140, visible: true },
     { key: "exp_date", label: "유통기한", width: 140, visible: true },
-    { key: "created_at", label: "등록일", width: 180, visible: true }
+    { key: "created_at", label: "등록일시", width: 180, visible: true }
   ],
-
   sortMap: {
+    no: 'thead th[data-col-key="no"] .th-inner',
     invoice: 'thead th[data-col-key="invoice"] .th-inner',
     material_no: 'thead th[data-col-key="material_no"] .th-inner',
     box_no: 'thead th[data-col-key="box_no"] .th-inner',
@@ -92,8 +91,32 @@ const tableManager = createTableManager({
     exp_date: 'thead th[data-col-key="exp_date"] .th-inner',
     created_at: 'thead th[data-col-key="created_at"] .th-inner'
   },
+  onSortChange: () => renderTable(true),
+  onSelectionChange: (ids) => {
+    toolbar.setDisabled("edit", ids.length !== 1);
+    toolbar.setDisabled("remove", ids.length < 1);
+  },
+  onColumnChange: () => {
+    renderTable(true);
+  }
+});
 
-  onSortChange: () => renderTable(true)
+const formModal = createModal({
+  mountId: "modal-root",
+  modalId: "wms-attribute-b-form-modal",
+  title: "개별 등록",
+  bodyHtml: getFormModalHtml(),
+  confirmText: "저장",
+  cancelText: "닫기"
+});
+
+const pasteModal = createModal({
+  mountId: "modal-root",
+  modalId: "wms-attribute-b-paste-modal",
+  title: "대량 등록",
+  bodyHtml: getPasteModalHtml(),
+  confirmText: "등록",
+  cancelText: "닫기"
 });
 
 init();
@@ -105,14 +128,18 @@ async function init() {
 }
 
 function bindEvents() {
-
+  toolbar.on("add", openAddModal);
+  toolbar.on("paste", openPasteModal);
+  toolbar.on("edit", editSelectedRow);
   toolbar.on("remove", deleteSelectedRows);
-
   toolbar.on("download", downloadExcel);
-
   toolbar.on("print", () => window.print());
+  toolbar.on("sum", sumSelectedQty);
 
   toolbar.searchInput?.addEventListener("input", () => renderTable(true));
+
+  formModal.onConfirm(() => saveFormRow());
+  pasteModal.onConfirm(() => savePasteRows());
 
   if (printArea) {
     printArea.addEventListener("scroll", onTableScroll, { passive: true });
@@ -120,7 +147,6 @@ function bindEvents() {
 }
 
 function onTableScroll() {
-
   if (!printArea) return;
   if (isAppending) return;
   if (renderedCount >= filteredRowsCache.length) return;
@@ -133,12 +159,10 @@ function onTableScroll() {
 }
 
 async function fetchAllRows() {
-
   let from = 0;
   let merged = [];
 
   while (true) {
-
     const to = from + FETCH_PAGE_SIZE - 1;
 
     const { data, error } = await supabaseClient
@@ -150,7 +174,6 @@ async function fetchAllRows() {
     if (error) throw error;
 
     const rows = Array.isArray(data) ? data : [];
-
     merged = merged.concat(rows);
 
     if (rows.length < FETCH_PAGE_SIZE) break;
@@ -162,45 +185,38 @@ async function fetchAllRows() {
 }
 
 async function loadRows() {
-
   tableManager.setStatus("불러오는 중...");
 
   try {
-
     const data = await fetchAllRows();
 
     allRows = Array.isArray(data) ? data : [];
 
     renderTable(true);
 
+    tableManager.setStatus(`${num(allRows.length)}건 불러옴`);
   } catch (error) {
-
     console.error(error);
-
     tableManager.setStatus("데이터 조회 실패");
   }
 }
 
 function getFilteredRows() {
-
   const keyword = toolbar.getSearchKeyword();
-
   let rows = [...allRows];
 
   if (keyword) {
-
-    rows = rows.filter(row => {
-
+    rows = rows.filter((row) => {
       return [
-
+        row.id,
         row.invoice,
         row.material_no,
         row.box_no,
         row.material_name,
         row.inbound_qty,
         row.mfg_date,
-        row.exp_date
-
+        row.exp_date,
+        row.created_at
       ].some(v => String(v ?? "").toLowerCase().includes(keyword));
     });
   }
@@ -222,18 +238,14 @@ function getFilteredRows() {
 }
 
 function renderTable(reset = false) {
-
   filteredRowsCache = getFilteredRows();
 
   if (reset) {
-
     renderedCount = 0;
-
     tbody.innerHTML = "";
   }
 
   if (!filteredRowsCache.length) {
-
     tbody.innerHTML = `
       <tr>
         <td colspan="10" class="table-empty">데이터가 없습니다.</td>
@@ -241,9 +253,7 @@ function renderTable(reset = false) {
     `;
 
     tableManager.refreshAfterRender();
-
     tableManager.setStatus("0건");
-
     return;
   }
 
@@ -251,15 +261,12 @@ function renderTable(reset = false) {
 }
 
 function appendNextRows(force = false) {
-
   if (isAppending && !force) return;
-
   if (renderedCount >= filteredRowsCache.length) return;
 
   isAppending = true;
 
   const visibleColumns = tableManager.getColumnState().filter(col => col.visible);
-
   const nextRows = filteredRowsCache.slice(renderedCount, renderedCount + RENDER_PAGE_SIZE);
 
   const html = nextRows.map(row => `
@@ -278,32 +285,21 @@ function appendNextRows(force = false) {
   renderedCount += nextRows.length;
 
   tableManager.refreshAfterRender();
-
-  tableManager.setStatus(`${filteredRowsCache.length}건 / 화면 ${renderedCount}건`);
+  tableManager.setStatus(`${num(filteredRowsCache.length)}건 / 화면 ${num(renderedCount)}건`);
 
   isAppending = false;
 }
 
 function renderCell(key, row) {
-
-  if (key === "no") return `<td class="mono-num">${row.no}</td>`;
-
-  if (key === "invoice") return `<td>${row.invoice ?? ""}</td>`;
-
-  if (key === "material_no") return `<td>${row.material_no ?? ""}</td>`;
-
-  if (key === "box_no") return `<td>${row.box_no ?? ""}</td>`;
-
-  if (key === "material_name") return `<td>${row.material_name ?? ""}</td>`;
-
-  if (key === "inbound_qty") return `<td class="mono-num">${row.inbound_qty ?? 0}</td>`;
-
-  if (key === "mfg_date") return `<td>${row.mfg_date ?? ""}</td>`;
-
-  if (key === "exp_date") return `<td>${row.exp_date ?? ""}</td>`;
-
-  if (key === "created_at") return `<td>${row.created_at ?? ""}</td>`;
-
+  if (key === "no") return `<td data-col-key="no" class="mono-num">${esc(row.no)}</td>`;
+  if (key === "invoice") return `<td data-col-key="invoice" class="mono-num">${esc(row.invoice)}</td>`;
+  if (key === "material_no") return `<td data-col-key="material_no" class="mono-num">${esc(row.material_no)}</td>`;
+  if (key === "box_no") return `<td data-col-key="box_no" class="mono-num">${esc(row.box_no)}</td>`;
+  if (key === "material_name") return `<td data-col-key="material_name">${esc(row.material_name)}</td>`;
+  if (key === "inbound_qty") return `<td data-col-key="inbound_qty" class="mono-num">${num(row.inbound_qty)}</td>`;
+  if (key === "mfg_date") return `<td data-col-key="mfg_date">${esc(row.mfg_date)}</td>`;
+  if (key === "exp_date") return `<td data-col-key="exp_date">${esc(row.exp_date)}</td>`;
+  if (key === "created_at") return `<td data-col-key="created_at">${esc(formatDateTime(row.created_at))}</td>`;
   return "";
 }
 
@@ -311,59 +307,366 @@ function getSelectedIds() {
   return tableManager.getSelectedIds().map(v => Number(v));
 }
 
-async function deleteSelectedRows() {
+function openAddModal() {
+  editId = "";
 
+  formModal.setTitle("개별 등록");
+
+  setFormValues({
+    invoice: "",
+    material_no: "",
+    box_no: "",
+    material_name: "",
+    inbound_qty: "",
+    mfg_date: "",
+    exp_date: ""
+  });
+
+  formModal.open();
+}
+
+function openPasteModal() {
+  getPasteTextarea().value = "";
+  pasteModal.open();
+
+  setTimeout(() => getPasteTextarea().focus(), 30);
+}
+
+function editSelectedRow() {
+  const ids = getSelectedIds();
+
+  if (ids.length !== 1) {
+    tableManager.setStatus("수정은 1건만 선택");
+    return;
+  }
+
+  const row = allRows.find(item => Number(item.id) === Number(ids[0]));
+
+  if (!row) return;
+
+  editId = row.id;
+
+  formModal.setTitle("선택 수정");
+
+  setFormValues({
+    invoice: row.invoice ?? "",
+    material_no: row.material_no ?? "",
+    box_no: row.box_no ?? "",
+    material_name: row.material_name ?? "",
+    inbound_qty: row.inbound_qty ?? 0,
+    mfg_date: row.mfg_date ?? "",
+    exp_date: row.exp_date ?? ""
+  });
+
+  formModal.open();
+}
+
+async function deleteSelectedRows() {
   const ids = getSelectedIds();
 
   if (!ids.length) {
-    tableManager.setStatus("삭제할 행 선택");
+    tableManager.setStatus("삭제할 행을 선택");
     return;
   }
 
   openConfirm({
-
     mountId: "modal-root",
-
     title: "삭제 확인",
-
-    message: `${ids.length}건 삭제할까요?`,
-
+    message: `선택한 ${num(ids.length)}건을 삭제할까요?`,
     onConfirm: async () => {
-
       const { error } = await supabaseClient
         .from(TABLE_NAME)
         .delete()
         .in("id", ids);
 
       if (error) {
-
         console.error(error);
-
         tableManager.setStatus("삭제 실패");
-
         return;
       }
 
       await loadRows();
 
-      tableManager.setStatus("삭제 완료");
+      tableManager.setStatus(`${num(ids.length)}건 삭제 완료`);
     }
   });
 }
 
+function sumSelectedQty() {
+  const ids = getSelectedIds();
+  let targetRows = [];
+
+  if (ids.length) {
+    targetRows = allRows.filter(row => ids.includes(Number(row.id)));
+  } else {
+    targetRows = filteredRowsCache;
+  }
+
+  const total = targetRows.reduce((acc, row) => acc + toNumber(row.inbound_qty), 0);
+
+  if (ids.length) {
+    tableManager.setStatus(`선택 수량 합계: ${num(total)}`);
+  } else {
+    tableManager.setStatus(`전체 수량 합계: ${num(total)}`);
+  }
+}
+
+async function saveFormRow() {
+  const values = getFormValues();
+
+  const data = {
+    invoice: values.invoice,
+    material_no: values.material_no,
+    box_no: values.box_no,
+    material_name: values.material_name,
+    inbound_qty: toNumber(values.inbound_qty),
+    mfg_date: values.mfg_date,
+    exp_date: values.exp_date
+  };
+
+  if (!data.invoice && !data.material_no && !data.material_name) {
+    tableManager.setStatus("Invoice / 코드 / 자재내역 중 1개 이상 입력");
+    return false;
+  }
+
+  if (editId) {
+    const { error } = await supabaseClient
+      .from(TABLE_NAME)
+      .update(data)
+      .eq("id", editId);
+
+    if (error) {
+      console.error(error);
+      tableManager.setStatus("수정 실패");
+      return false;
+    }
+
+    await loadRows();
+
+    tableManager.setStatus("수정 완료");
+
+    return true;
+  }
+
+  const { error } = await supabaseClient
+    .from(TABLE_NAME)
+    .insert([data]);
+
+  if (error) {
+    console.error(error);
+    tableManager.setStatus("등록 실패");
+    return false;
+  }
+
+  await loadRows();
+
+  tableManager.setStatus("등록 완료");
+
+  return true;
+}
+
+async function savePasteRows() {
+  const text = getPasteTextarea().value.trim();
+
+  if (!text) {
+    tableManager.setStatus("붙여넣기 데이터가 없습니다");
+    return false;
+  }
+
+  const lines = text.split(/\r?\n/).filter(Boolean);
+  const newRows = [];
+
+  for (const line of lines) {
+    const cols = line.split("\t");
+
+    if (cols.length < 7) continue;
+
+    const firstCol = String(cols[0] || "").trim();
+    const secondCol = String(cols[1] || "").trim();
+    const thirdCol = String(cols[2] || "").trim();
+
+    if (
+      firstCol === "Invoice" ||
+      firstCol === "인보이스" ||
+      secondCol === "코드" ||
+      thirdCol === "박스번호"
+    ) {
+      continue;
+    }
+
+    const row = {
+      invoice: firstCol,
+      material_no: secondCol,
+      box_no: thirdCol,
+      material_name: String(cols[3] || "").trim(),
+      inbound_qty: toNumber(cols[4]),
+      mfg_date: String(cols[5] || "").trim(),
+      exp_date: String(cols[6] || "").trim()
+    };
+
+    if (row.invoice || row.material_no || row.material_name) {
+      newRows.push(row);
+    }
+  }
+
+  if (!newRows.length) {
+    tableManager.setStatus("등록할 데이터가 없습니다");
+    return false;
+  }
+
+  const { error } = await supabaseClient
+    .from(TABLE_NAME)
+    .insert(newRows);
+
+  if (error) {
+    console.error(error);
+    tableManager.setStatus("대량 등록 실패");
+    return false;
+  }
+
+  await loadRows();
+
+  tableManager.setStatus(`${num(newRows.length)}건 등록 완료`);
+
+  return true;
+}
+
 function downloadExcel() {
-
-  const rows = filteredRowsCache.map(r => ({
-
-    Invoice: r.invoice,
-    코드: r.material_no,
-    박스번호: r.box_no,
-    자재내역: r.material_name,
-    수량: r.inbound_qty,
-    제조일자: r.mfg_date,
-    유통기한: r.exp_date
-
+  const rows = filteredRowsCache.map(row => ({
+    NO: row.no,
+    Invoice: row.invoice,
+    코드: row.material_no,
+    박스번호: row.box_no,
+    자재내역: row.material_name,
+    수량: row.inbound_qty,
+    제조일자: row.mfg_date,
+    유통기한: row.exp_date,
+    등록일시: formatDateTime(row.created_at)
   }));
 
-  downloadExcelFile(rows, "wms_attribute_b.xlsx");
+  downloadExcelFile({
+    fileName: "wms_attribute_b.xlsx",
+    sheetName: "wms_attribute_b",
+    rows
+  });
+
+  tableManager.setStatus("엑셀 다운로드 완료");
+}
+
+function getFormModalHtml() {
+  return `
+    <div class="wms-form-grid">
+      <div class="wms-form-row">
+        <label class="wms-form-label" for="f-invoice">Invoice</label>
+        <input id="f-invoice" class="wms-form-input" type="text">
+      </div>
+
+      <div class="wms-form-row">
+        <label class="wms-form-label" for="f-material-no">코드</label>
+        <input id="f-material-no" class="wms-form-input" type="text">
+      </div>
+
+      <div class="wms-form-row">
+        <label class="wms-form-label" for="f-box-no">박스번호</label>
+        <input id="f-box-no" class="wms-form-input" type="text">
+      </div>
+
+      <div class="wms-form-row full">
+        <label class="wms-form-label" for="f-material-name">자재내역</label>
+        <input id="f-material-name" class="wms-form-input" type="text">
+      </div>
+
+      <div class="wms-form-row">
+        <label class="wms-form-label" for="f-inbound-qty">수량</label>
+        <input id="f-inbound-qty" class="wms-form-input" type="number">
+      </div>
+
+      <div class="wms-form-row">
+        <label class="wms-form-label" for="f-mfg-date">제조일자</label>
+        <input id="f-mfg-date" class="wms-form-input" type="text">
+      </div>
+
+      <div class="wms-form-row">
+        <label class="wms-form-label" for="f-exp-date">유통기한</label>
+        <input id="f-exp-date" class="wms-form-input" type="text">
+      </div>
+    </div>
+  `;
+}
+
+function getPasteModalHtml() {
+  return `
+    <textarea id="paste-text" class="wms-form-textarea" placeholder="엑셀에서 복사 후 Ctrl+V"></textarea>
+    <div class="wms-help-text">열 순서 : Invoice / 코드 / 박스번호 / 자재내역 / 수량 / 제조일자 / 유통기한</div>
+  `;
+}
+
+function getFormElements() {
+  return {
+    invoice: document.getElementById("f-invoice"),
+    material_no: document.getElementById("f-material-no"),
+    box_no: document.getElementById("f-box-no"),
+    material_name: document.getElementById("f-material-name"),
+    inbound_qty: document.getElementById("f-inbound-qty"),
+    mfg_date: document.getElementById("f-mfg-date"),
+    exp_date: document.getElementById("f-exp-date")
+  };
+}
+
+function setFormValues(values) {
+  const form = getFormElements();
+
+  form.invoice.value = values.invoice ?? "";
+  form.material_no.value = values.material_no ?? "";
+  form.box_no.value = values.box_no ?? "";
+  form.material_name.value = values.material_name ?? "";
+  form.inbound_qty.value = values.inbound_qty ?? "";
+  form.mfg_date.value = values.mfg_date ?? "";
+  form.exp_date.value = values.exp_date ?? "";
+}
+
+function getFormValues() {
+  const form = getFormElements();
+
+  return {
+    invoice: form.invoice.value.trim(),
+    material_no: form.material_no.value.trim(),
+    box_no: form.box_no.value.trim(),
+    material_name: form.material_name.value.trim(),
+    inbound_qty: form.inbound_qty.value,
+    mfg_date: form.mfg_date.value.trim(),
+    exp_date: form.exp_date.value.trim()
+  };
+}
+
+function getPasteTextarea() {
+  return document.getElementById("paste-text");
+}
+
+function toNumber(value) {
+  const n = Number(String(value ?? "").replace(/,/g, "").trim());
+  return Number.isFinite(n) ? n : 0;
+}
+
+function num(value) {
+  return Number(value || 0).toLocaleString("ko-KR");
+}
+
+function formatDateTime(value) {
+  if (!value) return "";
+
+  const d = new Date(value);
+
+  if (Number.isNaN(d.getTime())) return String(value);
+
+  return d.toLocaleString("ko-KR");
+}
+
+function esc(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }

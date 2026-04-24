@@ -19,88 +19,190 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
-    html, body {
-      height: 100%;
-      margin: 0;
+    html, body{height:100%;margin:0;}
+    body{overflow:auto;}
+
+    #page-content,.wms-page-content{
+      height:100%;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
     }
 
-    body {
-      overflow: auto;
+    .expiry-reply-page{
+      flex:1;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+      background:#fff;
+      overflow:hidden;
     }
 
-    #page-content,
-    .wms-page-content {
-      height: 100%;
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
+    #page-topbar,#expiry-reply-toolbar,#page-status{flex:0 0 auto;}
+
+    .table-shell{overflow:auto !important;}
+
+    #print-area.table-shell{
+      flex:1 1 auto;
+      min-height:0;
+      min-width:0;
+      height:0;
+      overflow:auto !important;
     }
 
-    .expiry-reply-page {
-      flex: 1;
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
-      background: #fff;
-      overflow: hidden;
+    #expiry-reply-table{
+      min-width:2250px;
+      width:100%;
     }
 
-    #page-topbar,
-    #expiry-reply-toolbar,
-    #page-status {
-      flex: 0 0 auto;
+    .expiry-reply-table col:nth-child(1){width:44px;}
+    .expiry-reply-table col:nth-child(2){width:80px;}
+    .expiry-reply-table col:nth-child(3){width:170px;}
+    .expiry-reply-table col:nth-child(4){width:120px;}
+    .expiry-reply-table col:nth-child(5){width:100px;}
+    .expiry-reply-table col:nth-child(6){width:170px;}
+    .expiry-reply-table col:nth-child(7){width:150px;}
+    .expiry-reply-table col:nth-child(8){width:320px;}
+    .expiry-reply-table col:nth-child(9){width:220px;}
+    .expiry-reply-table col:nth-child(10){width:140px;}
+    .expiry-reply-table col:nth-child(11){width:170px;}
+    .expiry-reply-table col:nth-child(12){width:170px;}
+    .expiry-reply-table col:nth-child(13){width:130px;}
+    .expiry-reply-table col:nth-child(14){width:140px;}
+    .expiry-reply-table col:nth-child(15){width:240px;}
+
+    .reply-row-ready{background:#eff6ff !important;}
+    .reply-row-done{background:#f0fdf4 !important;}
+
+    .reply-btn{
+      height:28px;
+      padding:0 12px;
+      border:1px solid #cbd5e1;
+      border-radius:8px;
+      background:#f8fafc;
+      font-size:12px;
+      cursor:pointer;
+      white-space:nowrap;
     }
 
-    .table-shell {
-      overflow: auto !important;
+    .reply-btn.wait{
+      background:#f1f5f9;
+      color:#64748b;
+      cursor:not-allowed;
     }
 
-    #print-area.table-shell {
-      flex: 1 1 auto;
-      min-height: 0;
-      min-width: 0;
-      height: 0;
-      overflow: auto !important;
+    .reply-btn.ready{
+      background:#dbeafe;
+      border-color:#60a5fa;
+      color:#1d4ed8;
+      font-weight:700;
     }
 
-    #expiry-reply-table {
-      min-width: 2100px;
-      width: 100%;
+    .reply-btn.done{
+      background:#dcfce7;
+      border-color:#86efac;
+      color:#15803d;
+      font-weight:700;
     }
 
-    .expiry-reply-table col:nth-child(1) { width: 44px; }
-    .expiry-reply-table col:nth-child(2) { width: 80px; }
-    .expiry-reply-table col:nth-child(3) { width: 160px; }
-    .expiry-reply-table col:nth-child(4) { width: 120px; }
-    .expiry-reply-table col:nth-child(5) { width: 100px; }
-    .expiry-reply-table col:nth-child(6) { width: 160px; }
-    .expiry-reply-table col:nth-child(7) { width: 150px; }
-    .expiry-reply-table col:nth-child(8) { width: 320px; }
-    .expiry-reply-table col:nth-child(9) { width: 220px; }
-    .expiry-reply-table col:nth-child(10) { width: 140px; }
-    .expiry-reply-table col:nth-child(11) { width: 170px; }
-    .expiry-reply-table col:nth-child(12) { width: 170px; }
-    .expiry-reply-table col:nth-child(13) { width: 120px; }
-    .expiry-reply-table col:nth-child(14) { width: 240px; }
-
-    .reply-btn {
-      height: 28px;
-      padding: 0 12px;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      background: #fff;
-      font-size: 12px;
-      cursor: pointer;
+    @media (max-width:1024px){
+      html,body{height:auto;min-height:100%;}
+      #page-content,.wms-page-content{height:auto;min-height:100vh;}
+      .expiry-reply-page{height:auto;min-height:100vh;}
+      #print-area.table-shell{
+        height:auto !important;
+        min-height:520px;
+        flex:0 0 auto;
+      }
     }
 
-    .reply-btn.done {
-      background: #e0f2fe;
-      border-color: #7dd3fc;
-      color: #0369a1;
-      font-weight: 700;
+    @media (max-width:640px){
+      #expiry-reply-toolbar{
+        background:#fff;
+        overflow:visible !important;
+      }
+
+      #expiry-reply-toolbar .toolbar-row,
+      #expiry-reply-toolbar .toolbar-inner,
+      #expiry-reply-toolbar .toolbar-content{
+        display:flex !important;
+        flex-direction:column !important;
+        gap:8px !important;
+        width:100% !important;
+      }
+
+      #expiry-reply-toolbar .toolbar-left,
+      #expiry-reply-toolbar .toolbar-actions{
+        display:flex !important;
+        flex-wrap:wrap !important;
+        gap:6px !important;
+        width:100% !important;
+        order:1;
+      }
+
+      #expiry-reply-toolbar .toolbar-search,
+      #expiry-reply-toolbar .search-box,
+      #expiry-reply-toolbar .toolbar-search-box,
+      #expiry-reply-toolbar .search-wrap{
+        width:100% !important;
+        order:2;
+      }
+
+      #expiry-reply-toolbar input[type="search"],
+      #expiry-reply-toolbar input[type="text"],
+      #expiry-reply-toolbar #toolbar-search-input{
+        width:100% !important;
+        max-width:100% !important;
+      }
+
+      #expiry-reply-toolbar .toolbar-user,
+      #expiry-reply-toolbar .current-user,
+      #expiry-reply-toolbar .toolbar-current-user,
+      #expiry-reply-toolbar .user-info,
+      #expiry-reply-toolbar [class*="user"]{
+        width:100% !important;
+        text-align:right !important;
+        order:3;
+        font-size:13px;
+      }
+
+      #expiry-reply-toolbar button,
+      #expiry-reply-toolbar .icon-btn{
+        flex:0 0 auto !important;
+      }
+
+      #print-area.table-shell{min-height:460px;}
+    }
+
+    @media (max-width:640px){
+      .wms-modal,.modal,.wms-modal-box,.modal-box{
+        width:calc(100vw - 24px) !important;
+        max-width:calc(100vw - 24px) !important;
+      }
+
+      .wms-form-grid{
+        grid-template-columns:1fr !important;
+      }
+
+      .wms-form-row,
+      .wms-form-row.full{
+        grid-column:1 / -1 !important;
+      }
+
+      .wms-form-input,
+      .wms-form-textarea{
+        width:100% !important;
+      }
+
+      .wms-modal-body,
+      .modal-body{
+        max-height:70vh;
+        overflow:auto;
+      }
     }
   </style>
 </head>
+
 <body>
   <div id="app-nav"></div>
 
@@ -125,120 +227,27 @@
             <col data-col-key="created_at">
             <col data-col-key="reply_at">
             <col data-col-key="reply_status">
+            <col data-col-key="reply_user">
             <col data-col-key="note">
           </colgroup>
 
           <thead>
             <tr>
-              <th>
-                <div class="th-inner th-center">
-                  <input type="checkbox" class="chk" id="chk-all">
-                </div>
-              </th>
-
-              <th data-col-key="no">
-                <div class="th-inner">
-                  <span class="th-label">NO</span>
-                  <span class="sort-mark">↕</span>
-                  <span class="resize-handle"></span>
-                </div>
-              </th>
-
-              <th data-col-key="invoice">
-                <div class="th-inner">
-                  <span class="th-label">로케이션</span>
-                  <span class="sort-mark">↕</span>
-                  <span class="resize-handle"></span>
-                </div>
-              </th>
-
-              <th data-col-key="ship_date">
-                <div class="th-inner">
-                  <span class="th-label">출고일</span>
-                  <span class="sort-mark">↕</span>
-                  <span class="resize-handle"></span>
-                </div>
-              </th>
-
-              <th data-col-key="country">
-                <div class="th-inner">
-                  <span class="th-label">국가</span>
-                  <span class="sort-mark">↕</span>
-                  <span class="resize-handle"></span>
-                </div>
-              </th>
-
-              <th data-col-key="material_no">
-                <div class="th-inner">
-                  <span class="th-label">코드</span>
-                  <span class="sort-mark">↕</span>
-                  <span class="resize-handle"></span>
-                </div>
-              </th>
-
-              <th data-col-key="box_no">
-                <div class="th-inner">
-                  <span class="th-label">박스번호</span>
-                  <span class="sort-mark">↕</span>
-                  <span class="resize-handle"></span>
-                </div>
-              </th>
-
-              <th data-col-key="material_name">
-                <div class="th-inner">
-                  <span class="th-label">자재내역</span>
-                  <span class="sort-mark">↕</span>
-                  <span class="resize-handle"></span>
-                </div>
-              </th>
-
-              <th data-col-key="customer_name">
-                <div class="th-inner">
-                  <span class="th-label">납품처명</span>
-                  <span class="sort-mark">↕</span>
-                  <span class="resize-handle"></span>
-                </div>
-              </th>
-
-              <th data-col-key="manager">
-                <div class="th-inner">
-                  <span class="th-label">담당자</span>
-                  <span class="sort-mark">↕</span>
-                  <span class="resize-handle"></span>
-                </div>
-              </th>
-
-              <th data-col-key="created_at">
-                <div class="th-inner">
-                  <span class="th-label">등록일</span>
-                  <span class="sort-mark">↕</span>
-                  <span class="resize-handle"></span>
-                </div>
-              </th>
-
-              <th data-col-key="reply_at">
-                <div class="th-inner">
-                  <span class="th-label">처리일</span>
-                  <span class="sort-mark">↕</span>
-                  <span class="resize-handle"></span>
-                </div>
-              </th>
-
-              <th data-col-key="reply_status">
-                <div class="th-inner">
-                  <span class="th-label">확인</span>
-                  <span class="sort-mark">↕</span>
-                  <span class="resize-handle"></span>
-                </div>
-              </th>
-
-              <th data-col-key="note">
-                <div class="th-inner">
-                  <span class="th-label">비고</span>
-                  <span class="sort-mark">↕</span>
-                  <span class="resize-handle"></span>
-                </div>
-              </th>
+              <th><div class="th-inner th-center"><input type="checkbox" class="chk" id="chk-all"></div></th>
+              <th data-col-key="no"><div class="th-inner"><span class="th-label">NO</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="invoice"><div class="th-inner"><span class="th-label">로케이션</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="ship_date"><div class="th-inner"><span class="th-label">출고일</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="country"><div class="th-inner"><span class="th-label">국가</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="material_no"><div class="th-inner"><span class="th-label">코드</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="box_no"><div class="th-inner"><span class="th-label">박스번호</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="material_name"><div class="th-inner"><span class="th-label">자재내역</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="customer_name"><div class="th-inner"><span class="th-label">납품처명</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="manager"><div class="th-inner"><span class="th-label">담당자</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="created_at"><div class="th-inner"><span class="th-label">등록일</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="reply_at"><div class="th-inner"><span class="th-label">처리일</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="reply_status"><div class="th-inner"><span class="th-label">상태</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="reply_user"><div class="th-inner"><span class="th-label">사용자</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="note"><div class="th-inner"><span class="th-label">비고</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
             </tr>
           </thead>
 
@@ -252,6 +261,6 @@
 
   <div id="modal-root"></div>
 
-  <script type="module" src="/assets/js/pages/issues/expiry_reply.js?v=20260423_01"></script>
+  <script type="module" src="/assets/js/pages/issues/expiry_reply.js?v=20260424_03"></script>
 </body>
 </html>
