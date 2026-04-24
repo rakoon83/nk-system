@@ -19,135 +19,141 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
-    html, body {
-      height: 100%;
-      margin: 0;
+  html, body {
+    height: 100%;
+    margin: 0;
+  }
+
+  body {
+    overflow: auto;
+  }
+
+  #page-content,
+  .wms-page-content {
+    height: 100%;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .expiry-register-page {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    overflow: hidden;
+  }
+
+  #page-topbar,
+  #expiry-register-toolbar,
+  #page-status {
+    flex: 0 0 auto;
+  }
+
+  .table-shell {
+    overflow: auto !important;
+  }
+
+  #print-area.table-shell {
+    flex: 1 1 auto;
+    min-height: 0;
+    min-width: 0;
+    height: 0;
+    overflow: auto !important;
+  }
+
+  #expiry-register-table {
+    min-width: 1450px;
+    width: 100%;
+  }
+
+  .expiry-register-table col:nth-child(1) { width: 44px; }
+  .expiry-register-table col:nth-child(2) { width: 80px; }
+  .expiry-register-table col:nth-child(3) { width: 100px; }
+  .expiry-register-table col:nth-child(4) { width: 170px; }
+  .expiry-register-table col:nth-child(5) { width: 150px; }
+  .expiry-register-table col:nth-child(6) { width: 320px; }
+  .expiry-register-table col:nth-child(7) { width: 220px; }
+  .expiry-register-table col:nth-child(8) { width: 140px; }
+  .expiry-register-table col:nth-child(9) { width: 220px; }
+
+  @media (max-width: 640px) {
+    .wms-modal,
+    .modal,
+    .wms-modal-box,
+    .modal-box {
+      width: calc(100vw - 24px) !important;
+      max-width: calc(100vw - 24px) !important;
     }
 
+    .wms-form-grid {
+      grid-template-columns: 1fr !important;
+    }
+
+    .wms-form-row,
+    .wms-form-row.full {
+      grid-column: 1 / -1 !important;
+      min-width: 0;
+    }
+
+    .wms-form-input,
+    .wms-form-textarea {
+      width: 100% !important;
+      min-width: 0 !important;
+      box-sizing: border-box;
+    }
+
+    .wms-form-textarea {
+      min-height: 260px;
+    }
+
+    .wms-modal-body,
+    .modal-body {
+      max-height: 70vh;
+      overflow: auto;
+    }
+
+    html,
     body {
+      height: auto;
+      min-height: 100%;
       overflow: auto;
     }
 
     #page-content,
     .wms-page-content {
-      height: 100%;
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
+      height: auto;
+      min-height: 100vh;
+      overflow: visible;
     }
 
     .expiry-register-page {
-      flex: 1;
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
+      height: auto;
+      min-height: 100vh;
+      overflow: visible;
+    }
+
+    #expiry-register-toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
       background: #fff;
-      overflow: hidden;
-    }
-
-    #page-topbar,
-    #expiry-register-toolbar,
-    #page-status {
-      flex: 0 0 auto;
-    }
-
-    .table-shell {
-      overflow: auto !important;
     }
 
     #print-area.table-shell {
-      flex: 1 1 auto;
-      min-height: 0;
-      min-width: 0;
-      height: 0;
+      height: auto !important;
+      min-height: 420px;
+      max-height: none;
+      flex: 0 0 auto;
       overflow: auto !important;
     }
 
     #expiry-register-table {
       min-width: 1450px;
-      width: 100%;
     }
-
-    .expiry-register-table col:nth-child(1) { width: 44px; }
-    .expiry-register-table col:nth-child(2) { width: 80px; }
-    .expiry-register-table col:nth-child(3) { width: 100px; }
-    .expiry-register-table col:nth-child(4) { width: 170px; }
-    .expiry-register-table col:nth-child(5) { width: 150px; }
-    .expiry-register-table col:nth-child(6) { width: 320px; }
-    .expiry-register-table col:nth-child(7) { width: 220px; }
-    .expiry-register-table col:nth-child(8) { width: 140px; }
-    .expiry-register-table col:nth-child(9) { width: 220px; }
-
-    /* 모바일 상세/모달 잘림 방지 */
-    @media (max-width: 640px) {
-      .wms-modal,
-      .modal,
-      .wms-modal-box,
-      .modal-box {
-        width: calc(100vw - 24px) !important;
-        max-width: calc(100vw - 24px) !important;
-      }
-
-      .wms-form-grid {
-        grid-template-columns: 1fr !important;
-      }
-
-      .wms-form-row,
-      .wms-form-row.full {
-        grid-column: 1 / -1 !important;
-        min-width: 0;
-      }
-
-      .wms-form-input,
-      .wms-form-textarea {
-        width: 100% !important;
-        min-width: 0 !important;
-        box-sizing: border-box;
-      }
-
-      .wms-form-textarea {
-        min-height: 260px;
-      }
-
-      .wms-modal-body,
-      .modal-body {
-        max-height: 70vh;
-        overflow: auto;
-      }
-
-      html,
-      body {
-        height: auto;
-        min-height: 100%;
-        overflow: auto;
-      }
-
-      #page-content,
-      .wms-page-content {
-        height: auto;
-        min-height: 100vh;
-        overflow: visible;
-      }
-
-      .expiry-register-page {
-        height: auto;
-        min-height: 100vh;
-        overflow: visible;
-      }
-
-      #print-area.table-shell {
-        height: auto !important;
-        min-height: 420px;
-        max-height: none;
-        flex: 0 0 auto;
-        overflow: auto !important;
-      }
-
-      #expiry-register-table {
-        min-width: 1450px;
-      }
-    }
-  </style>
+  }
+</style>
 </head>
 <body>
   <div id="app-nav"></div>
