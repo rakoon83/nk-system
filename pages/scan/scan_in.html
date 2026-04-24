@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>입고 검수</title>
+
+  <link rel="icon" type="image/png" href="/assets/images/logo.png?v=1">
+
+  <link rel="stylesheet" href="/assets/css/font.css">
+  <link rel="stylesheet" href="/assets/css/common.css">
+  <link rel="stylesheet" href="/assets/css/nav.css?v=20260422">
+  <link rel="stylesheet" href="/assets/css/topbar.css">
+  <link rel="stylesheet" href="/assets/css/table.css">
+  <link rel="stylesheet" href="/assets/css/modal.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    html,body{height:100%;margin:0;}
+    body{overflow:auto;}
+
+    #page-content,.wms-page-content{
+      height:100%;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .scan-in-page{
+      flex:1;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+      background:#fff;
+      overflow:hidden;
+    }
+
+    #page-topbar,#page-status{flex:0 0 auto;}
+
+    .scan-panel{
+      flex:0 0 auto;
+      padding:10px 12px;
+      border-bottom:1px solid #e5e7eb;
+      background:#fff;
+    }
+
+    .scan-row{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      margin-bottom:8px;
+    }
+
+    .scan-row label{
+      width:70px;
+      font-size:13px;
+      font-weight:700;
+    }
+
+    .scan-input{
+      height:38px;
+      border:1px solid #cbd5e1;
+      padding:0 10px;
+      font-size:15px;
+      min-width:0;
+    }
+
+    #invoiceInput{width:260px;}
+
+    #scanInput{
+      flex:1;
+      height:44px;
+      font-size:20px;
+      font-weight:800;
+      border:2px solid #2563eb;
+    }
+
+    .scan-btn{
+      height:38px;
+      padding:0 14px;
+      border:1px solid #cbd5e1;
+      background:#f8fafc;
+      font-weight:800;
+      cursor:pointer;
+    }
+
+    .scan-btn.primary{
+      background:#2563eb;
+      border-color:#2563eb;
+      color:#fff;
+    }
+
+    .summary-grid{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      border:1px solid #e5e7eb;
+    }
+
+    .summary-item{
+      display:flex;
+      border-right:1px solid #e5e7eb;
+      border-bottom:1px solid #e5e7eb;
+      min-height:34px;
+    }
+
+    .summary-item span{
+      width:90px;
+      background:#f8fafc;
+      padding:8px;
+      font-size:13px;
+      font-weight:800;
+    }
+
+    .summary-item strong{
+      flex:1;
+      padding:8px;
+      font-size:13px;
+      font-weight:700;
+    }
+
+    .scan-status{
+      padding:8px 10px;
+      background:#f1f5f9;
+      font-size:13px;
+      font-weight:800;
+    }
+
+    .scan-status.ok{background:#dcfce7;color:#15803d;}
+    .scan-status.warn{background:#fef3c7;color:#92400e;}
+    .scan-status.err{background:#fee2e2;color:#b91c1c;}
+
+    .scan-log{
+      margin-top:8px;
+      border:1px solid #e5e7eb;
+      background:#fff;
+      padding:8px 10px;
+      font-size:13px;
+      max-height:96px;
+      overflow:auto;
+    }
+
+    .scan-log-title{
+      font-size:12px;
+      color:#64748b;
+      margin-bottom:6px;
+      font-weight:800;
+    }
+
+    .scan-log-item{
+      line-height:1.7;
+      font-weight:700;
+    }
+
+    .scan-log-item.ok{color:#15803d;}
+    .scan-log-item.dup{color:#c2410c;}
+    .scan-log-item.err{color:#b91c1c;}
+
+    .table-title{
+      padding:8px 12px;
+      border-bottom:1px solid #e5e7eb;
+      font-size:13px;
+      font-weight:800;
+      background:#fff;
+    }
+
+    .table-shell{overflow:auto !important;}
+
+    #print-area.table-shell{
+      flex:1 1 auto;
+      min-height:0;
+      min-width:0;
+      height:0;
+      overflow:auto !important;
+    }
+
+    #scan-in-table{
+      min-width:1250px;
+      width:100%;
+    }
+
+    .scan-in-table col:nth-child(1){width:70px;}
+    .scan-in-table col:nth-child(2){width:130px;}
+    .scan-in-table col:nth-child(3){width:140px;}
+    .scan-in-table col:nth-child(4){width:340px;}
+    .scan-in-table col:nth-child(5){width:80px;}
+    .scan-in-table col:nth-child(6){width:90px;}
+    .scan-in-table col:nth-child(7){width:90px;}
+    .scan-in-table col:nth-child(8){width:90px;}
+    .scan-in-table col:nth-child(9){width:150px;}
+    .scan-in-table col:nth-child(10){width:190px;}
+    .scan-in-table col:nth-child(11){width:130px;}
+
+    .scan-in-table th{
+      cursor:pointer;
+      user-select:none;
+    }
+
+    .sort-mark{
+      margin-left:4px;
+      color:#94a3b8;
+      font-size:12px;
+    }
+
+    .scan-row-checked td{background:#dcfce7 !important;}
+    .scan-row-dup td{background:#fef9c3 !important;}
+
+    .wms-table tbody tr:hover td{
+      filter:brightness(0.98);
+    }
+
+    .scan-badge{
+      display:inline-flex;
+      height:24px;
+      padding:0 10px;
+      align-items:center;
+      justify-content:center;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:800;
+      white-space:nowrap;
+    }
+
+    .scan-badge.complete{background:#bfdbfe;color:#1d4ed8;}
+    .scan-badge.checked{background:#bbf7d0;color:#15803d;}
+    .scan-badge.dup{background:#fde68a;color:#92400e;}
+    .scan-badge.partial{background:#fed7aa;color:#c2410c;}
+    .scan-badge.wait{background:#e2e8f0;color:#475569;}
+
+    @media (max-width:900px){
+      html,body{height:auto;min-height:100%;}
+      #page-content,.wms-page-content{height:auto;min-height:100vh;}
+      .scan-in-page{height:auto;min-height:100vh;}
+      #print-area.table-shell{height:auto;min-height:420px;}
+      .scan-row{flex-wrap:wrap;}
+      .scan-row label{width:100%;}
+      #invoiceInput,#scanInput{width:100%;flex:1 1 100%;}
+      .summary-grid{grid-template-columns:1fr;}
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app-nav"></div>
+
+  <div id="page-content">
+    <div class="scan-in-page">
+      <div id="page-topbar"></div>
+
+      <div class="scan-panel">
+        <div class="scan-row">
+          <label for="invoiceInput">Invoice</label>
+          <input id="invoiceInput" class="scan-input" type="text" autocomplete="off">
+          <button id="btnSearchInvoice" class="scan-btn primary" type="button">조회</button>
+          <button id="btnSpecialNote" class="scan-btn" type="button">특이사항</button>
+        </div>
+
+        <div class="summary-grid">
+          <div class="summary-item"><span>국가</span><strong id="country">-</strong></div>
+          <div class="summary-item"><span>출고일</span><strong id="ship_date">-</strong></div>
+          <div class="summary-item"><span>상차위치</span><strong id="location">-</strong></div>
+          <div class="summary-item"><span>컨테이너</span><strong id="container">-</strong></div>
+          <div class="summary-item"><span>CBM</span><strong id="cbm">0</strong></div>
+          <div class="summary-item"><span>수량</span><strong id="outbound_qty">0</strong></div>
+        </div>
+
+        <div class="scan-row" style="margin-top:8px;margin-bottom:0;">
+          <label for="scanInput">스캔</label>
+          <input id="scanInput" class="scan-input" type="text" placeholder="바코드 / 코드 / 박스번호" autocomplete="off">
+        </div>
+
+        <div id="scanStatus" class="scan-status">Invoice 조회 후 스캔하세요.</div>
+
+        <div class="scan-log">
+          <div class="scan-log-title">스캔된 목록 최근 3건</div>
+          <div id="scanLogList"></div>
+        </div>
+      </div>
+
+      <div class="table-title">출고/전체 목록</div>
+
+      <div id="print-area" class="table-shell">
+        <table class="wms-table scan-in-table" id="scan-in-table">
+          <colgroup>
+            <col><col><col><col><col><col><col><col><col><col><col>
+          </colgroup>
+
+          <thead>
+            <tr>
+              <th data-sort-key="list_no">번호 <span class="sort-mark">↕</span></th>
+              <th data-sort-key="status_text">검수 <span class="sort-mark">↕</span></th>
+              <th data-sort-key="box_no">박스번호 <span class="sort-mark">↕</span></th>
+              <th data-sort-key="material_name">자재내역 <span class="sort-mark">↕</span></th>
+              <th data-sort-key="work">작업 <span class="sort-mark">↕</span></th>
+              <th data-sort-key="outbound_qty">출고 <span class="sort-mark">↕</span></th>
+              <th data-sort-key="inbound_qty">입고 <span class="sort-mark">↕</span></th>
+              <th data-sort-key="comparison">비교 <span class="sort-mark">↕</span></th>
+              <th data-sort-key="material_no">코드 <span class="sort-mark">↕</span></th>
+              <th data-sort-key="barcode">바코드 <span class="sort-mark">↕</span></th>
+              <th data-sort-key="scan_user">사용자 <span class="sort-mark">↕</span></th>
+            </tr>
+          </thead>
+
+          <tbody id="scan-in-tbody">
+            <tr>
+              <td colspan="11" class="table-empty">Invoice 조회 후 표시됩니다.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div id="page-status" class="status-text no-print"></div>
+    </div>
+  </div>
+
+  <div id="modal-root"></div>
+
+  <audio id="sound-error" src="/sound/error.mp3" preload="auto"></audio>
+  <audio id="sound-dup" src="/sound/dup.mp3" preload="auto"></audio>
+  <audio id="sound-modal" src="/sound/modal.mp3" preload="auto"></audio>
+  <audio id="sound-ok" src="/sound/ok.mp3" preload="auto"></audio>
+
+  <script type="module" src="/assets/js/pages/scan/scan_in.js?v=20260424_06"></script>
+</body>
+</html>
