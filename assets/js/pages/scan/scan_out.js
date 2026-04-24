@@ -18,7 +18,7 @@ const WMS_TABLE = "wms_attribute_b";
 const DEFECT_TABLE = "defect_upload";
 const SPECIAL_TABLE = "special_note";
 const BARCODE_TABLE = "barcode_master";
-const LOG_TABLE = "scan_in_log";
+const LOG_TABLE = "scan_out_log";
 const FETCH_PAGE_SIZE = 1000;
 
 const loginUser = getLoginUser();
@@ -30,7 +30,7 @@ const btnSpecialNote = document.getElementById("btnSpecialNote");
 const scanInput = document.getElementById("scanInput");
 const scanStatus = document.getElementById("scanStatus");
 const scanLogList = document.getElementById("scanLogList");
-const tbody = document.getElementById("scan-in-tbody");
+const tbody = document.getElementById("scan-out-tbody");
 const pageStatus = document.getElementById("page-status");
 
 const elCountry = document.getElementById("country");
@@ -75,7 +75,7 @@ const specialModal = createModal({
 
 createTopbar({
   mountId: "page-topbar",
-  title: "입고 검수",
+  title: "출고 검수",
   subtitle: "Invoice 조회 후 바코드 / 코드 / 박스번호 스캔",
   rightHtml: `<div class="wms-topbar-chip">USER<strong>${esc(currentUserName)}</strong></div>`
 });
@@ -112,7 +112,7 @@ function bindEvents() {
 
   btnUnregContinue?.addEventListener("click", closeUnregModal);
 
-  document.querySelectorAll("#scan-in-table thead th[data-sort-key]").forEach(th => {
+  document.querySelectorAll("#scan-out-table thead th[data-sort-key]").forEach(th => {
     th.addEventListener("click", () => {
       const key = th.dataset.sortKey;
 
@@ -203,7 +203,7 @@ async function loadInvoice() {
     renderTable();
 
     playSound("modal");
-    setPageStatus(`${num(scanRows.length)}건 조회 / 검수이력 ${num(logRows.length)}건`);
+    setPageStatus(`${num(scanRows.length)}건 조회 / 출고검수이력 ${num(logRows.length)}건`);
     setScanStatus("스캔 대기", "ok");
 
     scanInput.value = "";
@@ -431,9 +431,7 @@ async function handleScan() {
     return;
   }
 
-  const beforeStatus = getBaseStatus(target);
-
-  target.scan = beforeStatus === "부분입고" ? "부분입고검수" : "입고검수완료";
+  target.scan = "출고검수완료";
   target.scan_user = currentUserName;
   target.is_dup = false;
 
@@ -474,7 +472,7 @@ async function saveScanLog(row) {
 
   if (error) {
     console.error(error);
-    setPageStatus("검수 로그 저장 실패");
+    setPageStatus("출고검수 로그 저장 실패");
   }
 }
 
@@ -544,36 +542,16 @@ function renderTable() {
   }).join("");
 }
 
-function getBaseStatus(row) {
-  if (toNumber(row.inbound_qty) === 0) return "미입고";
-  if (toNumber(row.inbound_qty) === toNumber(row.outbound_qty)) return "입고완료";
-  return "부분입고";
-}
-
 function getRowStatus(row) {
   if (row.is_dup) {
     return { text:"중복", rowClass:"scan-row-dup", badgeClass:"dup" };
   }
 
-  if (clean(row.scan) === "부분입고검수") {
-    return { text:"부분입고검수", rowClass:"scan-row-checked", badgeClass:"checked" };
+  if (clean(row.scan) === "출고검수완료") {
+    return { text:"출고검수완료", rowClass:"scan-row-checked", badgeClass:"checked" };
   }
 
-  if (clean(row.scan) === "입고검수완료") {
-    return { text:"검수완료", rowClass:"scan-row-checked", badgeClass:"checked" };
-  }
-
-  const base = getBaseStatus(row);
-
-  if (base === "미입고") {
-    return { text:"미입고", rowClass:"", badgeClass:"wait" };
-  }
-
-  if (base === "입고완료") {
-    return { text:"입고완료", rowClass:"", badgeClass:"complete" };
-  }
-
-  return { text:"부분입고", rowClass:"", badgeClass:"partial" };
+  return { text:"출고대기", rowClass:"", badgeClass:"wait" };
 }
 
 function addScanLog(type, text) {

@@ -336,7 +336,7 @@ body {
   font-size: 16px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1024px) {
   .wms-layout {
     flex-direction: column;
   }
@@ -354,41 +354,21 @@ body {
     min-width: 100%;
   }
 
-  .wms-sidebar.is-collapsed .wms-brand,
-  .wms-sidebar.is-collapsed .wms-brand-sub,
-  .wms-sidebar.is-collapsed .wms-nav-text,
-  .wms-sidebar.is-collapsed .wms-nav-caret,
-  .wms-sidebar.is-collapsed .wms-user-box {
-    display: block;
-  }
 
-  .wms-sidebar.is-collapsed .wms-submenu {
+  .wms-sidebar.is-collapsed .wms-sidebar-nav,
+  .wms-sidebar.is-collapsed .wms-sidebar-footer {
     display: none;
   }
 
-  .wms-sidebar.is-collapsed .wms-nav-group.is-open .wms-submenu {
+  .wms-sidebar.is-collapsed .wms-brand,
+  .wms-sidebar.is-collapsed .wms-brand-sub {
     display: block;
-  }
-
-  .wms-sidebar.is-collapsed .wms-nav-link {
-    justify-content: flex-start;
-    padding-left: 12px;
-    padding-right: 12px;
   }
 
   .wms-sidebar.is-collapsed .wms-sidebar-header {
     justify-content: space-between;
     padding-left: 14px;
     padding-right: 14px;
-  }
-
-  .wms-sidebar.is-collapsed .wms-logout-btn {
-    font-size: 13px;
-  }
-
-  .wms-sidebar.is-collapsed .wms-logout-btn::before {
-    content: "";
-    font-size: 0;
   }
 
   .wms-page-content {

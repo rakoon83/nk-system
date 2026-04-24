@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>입고 검수 로그</title>
+
+  <link rel="icon" type="image/png" href="/assets/images/logo.png?v=1">
+
+  <link rel="stylesheet" href="/assets/css/font.css">
+  <link rel="stylesheet" href="/assets/css/common.css">
+  <link rel="stylesheet" href="/assets/css/nav.css?v=20260422">
+  <link rel="stylesheet" href="/assets/css/topbar.css">
+  <link rel="stylesheet" href="/assets/css/toolbar.css">
+  <link rel="stylesheet" href="/assets/css/table.css">
+  <link rel="stylesheet" href="/assets/css/modal.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    html,body{height:100%;margin:0;}
+    body{overflow:auto;}
+
+    #page-content,
+    .wms-page-content{
+      height:100%;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .scan-log-page{
+      flex:1;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+      background:#fff;
+      overflow:hidden;
+    }
+
+    #page-topbar,
+    #scan-log-toolbar,
+    #page-status{
+      flex:0 0 auto;
+    }
+
+    .scan-log-summary{
+      display:grid;
+      grid-template-columns:1.4fr 1fr 1fr;
+      gap:10px;
+      padding:10px 12px;
+      border-bottom:1px solid #e5e7eb;
+      background:#f8fafc;
+    }
+
+    .summary-card{
+      background:#fff;
+      border:1px solid #e5e7eb;
+      padding:10px;
+      min-height:70px;
+    }
+
+    .summary-title{
+      font-size:13px;
+      font-weight:800;
+      margin-bottom:8px;
+      color:#334155;
+    }
+
+    .progress-wrap{
+      height:16px;
+      background:#e5e7eb;
+      overflow:hidden;
+      border-radius:999px;
+    }
+
+    .progress-bar{
+      height:100%;
+      width:0%;
+      background:#22c55e;
+      transition:.2s;
+    }
+
+    .progress-text{
+      margin-top:6px;
+      font-size:13px;
+      font-weight:800;
+    }
+
+    .rank-list,
+    .speed-list{
+      font-size:13px;
+      line-height:1.7;
+      max-height:82px;
+      overflow:auto;
+    }
+
+    .table-shell{overflow:auto !important;}
+
+    #print-area.table-shell{
+      flex:1 1 auto;
+      min-height:0;
+      min-width:0;
+      height:0;
+      overflow:auto !important;
+    }
+
+    #scan-log-table{
+      min-width:1700px;
+      width:100%;
+    }
+
+    .scan-log-table col:nth-child(1){width:44px;}
+    .scan-log-table col:nth-child(2){width:70px;}
+    .scan-log-table col:nth-child(3){width:150px;}
+    .scan-log-table col:nth-child(4){width:100px;}
+    .scan-log-table col:nth-child(5){width:130px;}
+    .scan-log-table col:nth-child(6){width:130px;}
+    .scan-log-table col:nth-child(7){width:90px;}
+    .scan-log-table col:nth-child(8){width:140px;}
+    .scan-log-table col:nth-child(9){width:160px;}
+    .scan-log-table col:nth-child(10){width:150px;}
+    .scan-log-table col:nth-child(11){width:320px;}
+    .scan-log-table col:nth-child(12){width:180px;}
+    .scan-log-table col:nth-child(13){width:150px;}
+    .scan-log-table col:nth-child(14){width:150px;}
+    .scan-log-table col:nth-child(15){width:180px;}
+
+    .status-badge{
+      display:inline-flex;
+      height:24px;
+      padding:0 10px;
+      align-items:center;
+      justify-content:center;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:800;
+      white-space:nowrap;
+    }
+
+    .status-badge.done{background:#dcfce7;color:#15803d;}
+    .status-badge.part{background:#ffedd5;color:#c2410c;}
+    .status-badge.etc{background:#e2e8f0;color:#475569;}
+
+    @media (max-width:900px){
+      html,body{height:auto;min-height:100%;}
+      #page-content,.wms-page-content{height:auto;min-height:100vh;}
+      .scan-log-page{height:auto;min-height:100vh;}
+      .scan-log-summary{grid-template-columns:1fr;}
+      #print-area.table-shell{
+        height:auto !important;
+        min-height:520px;
+        flex:0 0 auto;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app-nav"></div>
+
+  <div id="page-content">
+    <div class="scan-log-page">
+      <div id="page-topbar"></div>
+      <div id="scan-log-toolbar"></div>
+
+      <div class="scan-log-summary">
+        <div class="summary-card">
+          <div class="summary-title">검수 완료율</div>
+          <div class="progress-wrap">
+            <div id="progress-bar" class="progress-bar"></div>
+          </div>
+          <div id="progress-text" class="progress-text">0 / 0건 (0%)</div>
+        </div>
+
+        <div class="summary-card">
+          <div class="summary-title">사용자 검수 순위</div>
+          <div id="rank-list" class="rank-list">-</div>
+        </div>
+
+        <div class="summary-card">
+          <div class="summary-title">검수속도 통계</div>
+          <div id="speed-list" class="speed-list">-</div>
+        </div>
+      </div>
+
+      <div id="print-area" class="table-shell">
+        <table class="wms-table scan-log-table" id="scan-log-table">
+          <colgroup>
+            <col>
+            <col data-col-key="no">
+            <col data-col-key="invoice">
+            <col data-col-key="country">
+            <col data-col-key="ship_date">
+            <col data-col-key="scan_user">
+            <col data-col-key="list_no">
+            <col data-col-key="scan_status">
+            <col data-col-key="box_no">
+            <col data-col-key="material_no">
+            <col data-col-key="material_name">
+            <col data-col-key="barcode">
+            <col data-col-key="location">
+            <col data-col-key="container">
+            <col data-col-key="created_at">
+          </colgroup>
+
+          <thead>
+            <tr>
+              <th><div class="th-inner th-center"><input type="checkbox" class="chk" id="chk-all"></div></th>
+              <th data-col-key="no"><div class="th-inner"><span class="th-label">NO</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="invoice"><div class="th-inner"><span class="th-label">Invoice</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="country"><div class="th-inner"><span class="th-label">국가</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="ship_date"><div class="th-inner"><span class="th-label">출고일</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="scan_user"><div class="th-inner"><span class="th-label">사용자</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="list_no"><div class="th-inner"><span class="th-label">번호</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="scan_status"><div class="th-inner"><span class="th-label">검수</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="box_no"><div class="th-inner"><span class="th-label">박스번호</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="material_no"><div class="th-inner"><span class="th-label">코드</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="material_name"><div class="th-inner"><span class="th-label">자재내역</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="barcode"><div class="th-inner"><span class="th-label">바코드</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="location"><div class="th-inner"><span class="th-label">상차위치</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="container"><div class="th-inner"><span class="th-label">컨테이너</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="created_at"><div class="th-inner"><span class="th-label">검수일시</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+            </tr>
+          </thead>
+
+          <tbody id="scan-log-tbody"></tbody>
+        </table>
+      </div>
+
+      <div id="page-status" class="status-text no-print"></div>
+    </div>
+  </div>
+
+  <div id="modal-root"></div>
+
+  <script type="module" src="/assets/js/pages/scan/scan_in_log.js?v=20260424_03"></script>
+</body>
+</html>

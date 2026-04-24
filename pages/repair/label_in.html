@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>라벨 입고</title>
+
+  <link rel="icon" type="image/png" href="/assets/images/logo.png?v=1">
+
+  <link rel="stylesheet" href="/assets/css/font.css">
+  <link rel="stylesheet" href="/assets/css/common.css">
+  <link rel="stylesheet" href="/assets/css/nav.css?v=20260422">
+  <link rel="stylesheet" href="/assets/css/topbar.css">
+  <link rel="stylesheet" href="/assets/css/toolbar.css">
+  <link rel="stylesheet" href="/assets/css/table.css">
+  <link rel="stylesheet" href="/assets/css/modal.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    html,body{height:100%;margin:0;}
+    body{overflow:auto;}
+
+    #page-content,.wms-page-content{
+      height:100%;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .label-in-page{
+      flex:1;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+      background:#fff;
+      overflow:hidden;
+    }
+
+    #page-topbar,#label-in-toolbar,#page-status{flex:0 0 auto;}
+
+    .table-shell{overflow:auto !important;}
+
+    #print-area.table-shell{
+      flex:1 1 auto;
+      min-height:0;
+      min-width:0;
+      height:0;
+      overflow:auto !important;
+    }
+
+    #label-in-table{
+      min-width:1600px;
+      width:100%;
+    }
+
+    .label-in-table col:nth-child(1){width:44px;}
+    .label-in-table col:nth-child(2){width:60px;}
+    .label-in-table col:nth-child(3){width:170px;}
+    .label-in-table col:nth-child(4){width:120px;}
+    .label-in-table col:nth-child(5){width:100px;}
+    .label-in-table col:nth-child(6){width:100px;}
+    .label-in-table col:nth-child(7){width:100px;}
+    .label-in-table col:nth-child(8){width:100px;}
+    .label-in-table col:nth-child(9){width:220px;}
+    .label-in-table col:nth-child(10){width:140px;}
+    .label-in-table col:nth-child(11){width:140px;}
+    .label-in-table col:nth-child(12){width:260px;}
+    .label-in-table col:nth-child(13){width:170px;}
+
+    @media (max-width:1024px){
+      html,body{height:auto;min-height:100%;}
+      #page-content,.wms-page-content{height:auto;min-height:100vh;}
+      .label-in-page{height:auto;min-height:100vh;}
+      #print-area.table-shell{
+        height:auto !important;
+        min-height:520px;
+        flex:0 0 auto;
+      }
+    }
+
+    @media (max-width:640px){
+      #label-in-toolbar{
+        background:#fff;
+        overflow:visible !important;
+      }
+
+      #label-in-toolbar .toolbar-row,
+      #label-in-toolbar .toolbar-inner,
+      #label-in-toolbar .toolbar-content{
+        display:flex !important;
+        flex-direction:column !important;
+        gap:8px !important;
+        width:100% !important;
+      }
+
+      #label-in-toolbar .toolbar-left,
+      #label-in-toolbar .toolbar-actions{
+        display:flex !important;
+        flex-wrap:wrap !important;
+        gap:6px !important;
+        width:100% !important;
+      }
+
+      #label-in-toolbar input{
+        width:100% !important;
+        max-width:100% !important;
+      }
+
+      #print-area.table-shell{min-height:460px;}
+
+      .wms-modal,.modal,.wms-modal-box,.modal-box{
+        width:calc(100vw - 24px) !important;
+        max-width:calc(100vw - 24px) !important;
+      }
+
+      .wms-form-grid{grid-template-columns:1fr !important;}
+      .wms-form-row,.wms-form-row.full{grid-column:1 / -1 !important;}
+      .wms-form-input{width:100% !important;}
+
+      .wms-modal-body,.modal-body{
+        max-height:70vh;
+        overflow:auto;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app-nav"></div>
+
+  <div id="page-content">
+    <div class="label-in-page">
+      <div id="page-topbar"></div>
+      <div id="label-in-toolbar"></div>
+
+      <div id="print-area" class="table-shell">
+        <table class="wms-table label-in-table" id="label-in-table">
+          <colgroup>
+            <col>
+            <col data-col-key="no">
+            <col data-col-key="invoice">
+            <col data-col-key="ship_date">
+            <col data-col-key="country">
+            <col data-col-key="product_qty">
+            <col data-col-key="outer_box_qty">
+            <col data-col-key="total_qty">
+            <col data-col-key="customer_name">
+            <col data-col-key="manager">
+            <col data-col-key="user_name">
+            <col data-col-key="note">
+            <col data-col-key="created_at">
+          </colgroup>
+
+          <thead>
+            <tr>
+              <th><div class="th-inner th-center"><input type="checkbox" class="chk" id="chk-all"></div></th>
+              <th data-col-key="no"><div class="th-inner"><span class="th-label">NO</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="invoice"><div class="th-inner"><span class="th-label">인보이스</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="ship_date"><div class="th-inner"><span class="th-label">출고일</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="country"><div class="th-inner"><span class="th-label">국가</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="product_qty"><div class="th-inner"><span class="th-label">제품</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="outer_box_qty"><div class="th-inner"><span class="th-label">외박스</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="total_qty"><div class="th-inner"><span class="th-label">합계</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="customer_name"><div class="th-inner"><span class="th-label">납품처명</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="manager"><div class="th-inner"><span class="th-label">담당자</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="user_name"><div class="th-inner"><span class="th-label">사용자</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="note"><div class="th-inner"><span class="th-label">비고</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="created_at"><div class="th-inner"><span class="th-label">등록일</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+            </tr>
+          </thead>
+
+          <tbody id="label-in-tbody"></tbody>
+        </table>
+      </div>
+
+      <div id="page-status" class="status-text no-print"></div>
+    </div>
+  </div>
+
+  <div id="modal-root"></div>
+
+  <script type="module" src="/assets/js/pages/repair/label_in.js?v=20260425_01"></script>
+</body>
+</html>

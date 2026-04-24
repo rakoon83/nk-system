@@ -16,6 +16,8 @@ const SUPABASE_URL = "https://pdadmygpowrhrxxwawak.supabase.co";
 const SUPABASE_KEY = "sb_publishable_Hzk4cMVV-7hFDP_ehgqh_A_CFcQm-A1";
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+const RESULT_TABLE = "expiry_alert_result";
+
 const WMS_TABLE_CANDIDATES = ["wms_attribute_b"];
 const BARCODE_TABLE_CANDIDATES = ["barcode_master"];
 const SAP_DOC_TABLE_CANDIDATES = ["sap_doc", "sap_doc_master"];
@@ -23,6 +25,7 @@ const DEFECT_TABLE_CANDIDATES = ["defect_upload", "defect_master", "defect"];
 const EXCLUDE_TABLE_CANDIDATES = ["expiry_exclude_master"];
 
 const FETCH_PAGE_SIZE = 1000;
+const INSERT_CHUNK_SIZE = 500;
 const RENDER_PAGE_SIZE = 500;
 
 const loginUser = getLoginUser();
@@ -31,10 +34,15 @@ const currentUserName = loginUser?.name || loginUser?.id || "-";
 const tbody = document.getElementById("expiry-alert-tbody");
 const printArea = document.getElementById("print-area");
 
+const btnUnder70 = document.getElementById("btnUnder70");
+const btnAllRows = document.getElementById("btnAllRows");
+const btnRefreshResult = document.getElementById("btnRefreshResult");
+
 let allRows = [];
 let filteredRowsCache = [];
 let renderedCount = 0;
 let isAppending = false;
+let viewMode = "under70";
 
 const state = {
   barcodeSchema: "basic",
@@ -50,7 +58,7 @@ const state = {
 createTopbar({
   mountId: "page-topbar",
   title: "유통기한 알림",
-  subtitle: "내역 조회",
+  subtitle: "결과 저장 조회",
   rightHtml: `<div class="wms-topbar-chip">DB<strong>SUPABASE</strong></div>`
 });
 
@@ -125,7 +133,7 @@ init();
 async function init() {
   bindEvents();
   tableManager.init();
-  await loadRows();
+  await loadResultRows("under70");
 }
 
 function bindEvents() {
@@ -134,9 +142,18 @@ function bindEvents() {
 
   toolbar.searchInput?.addEventListener("input", () => renderTable(true));
 
+  btnUnder70?.addEventListener("click", () => loadResultRows("under70"));
+  btnAllRows?.addEventListener("click", () => loadResultRows("all"));
+  btnRefreshResult?.addEventListener("click", refreshResultRows);
+
   if (printArea) {
     printArea.addEventListener("scroll", onTableScroll, { passive: true });
   }
+}
+
+function setActiveButton(mode) {
+  btnUnder70?.classList.toggle("active", mode === "under70");
+  btnAllRows?.classList.toggle("active", mode === "all");
 }
 
 function onTableScroll() {
@@ -147,6 +164,165 @@ function onTableScroll() {
   const remain = printArea.scrollHeight - printArea.scrollTop - printArea.clientHeight;
   if (remain < 300) {
     appendNextRows();
+  }
+}
+
+async function loadResultRows(mode = "under70") {
+  viewMode = mode;
+  setActiveButton(mode);
+  tableManager.setStatus(mode === "under70" ? "70% 미만 조회중..." : "전체 조회중...");
+
+  try {
+    const rows = await fetchResultRows(mode);
+    allRows = rows;
+    renderTable(true);
+
+    tableManager.setStatus(
+      mode === "under70"
+        ? `70% 미만 ${num(rows.length)}건`
+        : `전체 ${num(rows.length)}건`
+    );
+  } catch (error) {
+    console.error(error);
+    allRows = [];
+    filteredRowsCache = [];
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="15" class="table-empty">결과 조회 실패</td>
+      </tr>
+    `;
+    tableManager.refreshAfterRender();
+    tableManager.setStatus("결과 조회 실패 / 결과갱신 필요");
+  }
+}
+
+async function fetchResultRows(mode) {
+  let from = 0;
+  let merged = [];
+
+  while (true) {
+    const to = from + FETCH_PAGE_SIZE - 1;
+
+    let query = supabaseClient
+      .from(RESULT_TABLE)
+      .select("*")
+      .order("expiry_rate", { ascending: true, nullsFirst: false })
+      .range(from, to);
+
+    if (mode === "under70") {
+      query = query.lt("expiry_rate", 70);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    const rows = Array.isArray(data) ? data : [];
+    merged = merged.concat(rows);
+
+    if (rows.length < FETCH_PAGE_SIZE) break;
+    from += FETCH_PAGE_SIZE;
+  }
+
+  return merged;
+}
+
+async function refreshResultRows() {
+  if (!confirm("원본 데이터를 다시 계산해서 결과를 갱신할까요?")) return;
+
+  tableManager.setStatus("결과갱신 중... 원본 데이터 조회");
+
+  try {
+    await initTables();
+
+    const jobs = [
+      fetchAllRows(
+        state.tables.wms,
+        "id, invoice, material_no, box_no, material_name, inbound_qty, mfg_date, exp_date, created_at"
+      ),
+      fetchAllRows(
+        state.tables.barcode,
+        getBarcodeSelectCols()
+      )
+    ];
+
+    if (state.tables.sapDoc) {
+      jobs.push(fetchAllRows(state.tables.sapDoc, "id, invoice, ship_date, country"));
+    } else {
+      jobs.push(Promise.resolve([]));
+    }
+
+    if (state.tables.defect) {
+      jobs.push(fetchAllRows(state.tables.defect, "id, invoice, location"));
+    } else {
+      jobs.push(Promise.resolve([]));
+    }
+
+    if (state.tables.exclude) {
+      jobs.push(fetchAllRows(state.tables.exclude, "id, material_no"));
+    } else {
+      jobs.push(Promise.resolve([]));
+    }
+
+    const [wmsRows, barcodeRows, sapDocRows, defectRows, excludeRows] = await Promise.all(jobs);
+
+    tableManager.setStatus("계산 중...");
+
+    const barcodeMaps = buildBarcodeMap(barcodeRows);
+    const sapDocMap = buildSapDocMap(sapDocRows);
+    const defectMap = buildDefectMap(defectRows);
+    const excludeSet = buildExcludeSet(excludeRows);
+
+    const resultRows = mergeRows(wmsRows, barcodeMaps, sapDocMap, defectMap, excludeSet);
+
+    tableManager.setStatus("기존 결과 삭제중...");
+
+    const { error: deleteError } = await supabaseClient
+      .from(RESULT_TABLE)
+      .delete()
+      .gte("id", 0);
+
+    if (deleteError) throw deleteError;
+
+    tableManager.setStatus(`결과 저장중... ${num(resultRows.length)}건`);
+
+    const insertRows = resultRows.map(row => ({
+      invoice: row.invoice,
+      ship_date: row.ship_date,
+      country: row.country,
+      location: row.location,
+      material_no: row.material_no,
+      box_no: row.box_no,
+      material_name: row.material_name,
+      inbound_qty: row.inbound_qty,
+      mfg_date: row.mfg_date,
+      exp_date: row.exp_date,
+      remaining_days: row.remaining_days,
+      expiry_days: row.expiry_days,
+      expiry_rate: row.expiry_rate,
+      is_excluded: row.is_excluded
+    }));
+
+    for (let i = 0; i < insertRows.length; i += INSERT_CHUNK_SIZE) {
+      const chunk = insertRows.slice(i, i + INSERT_CHUNK_SIZE);
+
+      const { error: insertError } = await supabaseClient
+        .from(RESULT_TABLE)
+        .insert(chunk);
+
+      if (insertError) throw insertError;
+
+      tableManager.setStatus(`결과 저장중... ${num(Math.min(i + INSERT_CHUNK_SIZE, insertRows.length))} / ${num(insertRows.length)}건`);
+    }
+
+    tableManager.setStatus(
+      `갱신 완료 / WMS ${num(wmsRows.length)}건 / 결과 ${num(resultRows.length)}건`
+    );
+
+    await loadResultRows("under70");
+  } catch (error) {
+    console.error(error);
+    tableManager.setStatus("결과갱신 실패");
   }
 }
 
@@ -256,68 +432,6 @@ async function initTables() {
   if (!state.tables.barcode) throw new Error("barcode_master 테이블을 찾지 못했습니다.");
 
   await detectBarcodeSchema(state.tables.barcode);
-}
-
-async function loadRows() {
-  tableManager.setStatus("불러오는 중...");
-
-  try {
-    await initTables();
-
-    const jobs = [
-      fetchAllRows(
-        state.tables.wms,
-        "id, invoice, material_no, box_no, material_name, inbound_qty, mfg_date, exp_date, created_at"
-      ),
-      fetchAllRows(
-        state.tables.barcode,
-        getBarcodeSelectCols()
-      )
-    ];
-
-    if (state.tables.sapDoc) {
-      jobs.push(fetchAllRows(state.tables.sapDoc, "id, invoice, ship_date, country"));
-    } else {
-      jobs.push(Promise.resolve([]));
-    }
-
-    if (state.tables.defect) {
-      jobs.push(fetchAllRows(state.tables.defect, "id, invoice, location"));
-    } else {
-      jobs.push(Promise.resolve([]));
-    }
-
-    if (state.tables.exclude) {
-      jobs.push(fetchAllRows(state.tables.exclude, "id, material_no"));
-    } else {
-      jobs.push(Promise.resolve([]));
-    }
-
-    const [wmsRows, barcodeRows, sapDocRows, defectRows, excludeRows] = await Promise.all(jobs);
-
-    const barcodeMaps = buildBarcodeMap(barcodeRows);
-    const sapDocMap = buildSapDocMap(sapDocRows);
-    const defectMap = buildDefectMap(defectRows);
-    const excludeSet = buildExcludeSet(excludeRows);
-
-    allRows = mergeRows(wmsRows, barcodeMaps, sapDocMap, defectMap, excludeSet);
-    renderTable(true);
-
-    tableManager.setStatus(
-      `WMS ${num(wmsRows.length)}건 / 바코드 ${num(barcodeRows.length)}건 / SAP문서 ${num(sapDocRows.length)}건 / 결품 ${num(defectRows.length)}건 / 제외 ${num(excludeRows.length)}건`
-    );
-  } catch (error) {
-    console.error(error);
-    allRows = [];
-    filteredRowsCache = [];
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="15" class="table-empty">데이터 조회 실패</td>
-      </tr>
-    `;
-    tableManager.refreshAfterRender();
-    tableManager.setStatus("데이터 조회 실패");
-  }
 }
 
 function getFilteredRows() {
@@ -739,7 +853,7 @@ function num(value) {
 }
 
 function numOrBlank(value) {
-  return Number.isFinite(value) ? Number(value).toLocaleString("ko-KR") : "";
+  return Number.isFinite(Number(value)) ? Number(value).toLocaleString("ko-KR") : "";
 }
 
 function esc(value) {

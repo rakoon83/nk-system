@@ -18,7 +18,6 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-
 html,body{
 height:100%;
 margin:0;
@@ -47,8 +46,41 @@ overflow:hidden;
 
 #page-topbar,
 #expiry-alert-toolbar,
+#expiry-alert-actions,
 #page-status{
 flex:0 0 auto;
+}
+
+.expiry-alert-actions{
+display:flex;
+gap:8px;
+align-items:center;
+padding:8px 14px;
+border-bottom:1px solid #e5e7eb;
+background:#fff;
+}
+
+.expiry-alert-actions button{
+height:32px;
+padding:0 12px;
+border:1px solid #d0d5dd;
+border-radius:8px;
+background:#fff;
+font-size:13px;
+font-weight:700;
+cursor:pointer;
+}
+
+.expiry-alert-actions button.active{
+background:#111827;
+border-color:#111827;
+color:#fff;
+}
+
+.expiry-alert-actions button.danger{
+background:#fff7ed;
+border-color:#fed7aa;
+color:#c2410c;
 }
 
 .table-shell{
@@ -230,6 +262,15 @@ font-size:13px;
 flex:0 0 auto !important;
 }
 
+.expiry-alert-actions{
+flex-wrap:wrap;
+padding:8px 10px;
+}
+
+.expiry-alert-actions button{
+flex:1 1 auto;
+}
+
 #print-area.table-shell{
 height:60vh !important;
 min-height:460px;
@@ -238,7 +279,6 @@ overflow:auto !important;
 }
 
 }
-
 </style>
 </head>
 
@@ -253,6 +293,12 @@ overflow:auto !important;
 <div id="page-topbar"></div>
 
 <div id="expiry-alert-toolbar"></div>
+
+<div id="expiry-alert-actions" class="expiry-alert-actions">
+  <button type="button" id="btnUnder70" class="active">70% 미만조회</button>
+  <button type="button" id="btnAllRows">전체조회</button>
+  <button type="button" id="btnRefreshResult" class="danger">결과갱신</button>
+</div>
 
 <div id="print-area" class="table-shell">
 
@@ -315,7 +361,7 @@ overflow:auto !important;
 
 </div>
 
-<script type="module" src="/assets/js/pages/issues/expiry_alert.js?v=20260424_03"></script>
+<script type="module" src="/assets/js/pages/issues/expiry_alert.js?v=20260424_10"></script>
 
 </body>
 </html>

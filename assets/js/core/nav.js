@@ -49,6 +49,7 @@ const NAV_ITEMS = [
     title: "보수",
     icon: "▣",
     children: [
+      { label: "라벨입고", link: "/pages/repair/label_in.html" },
       { label: "입고정보", link: "/pages/repair/repair_in.html" },
       { label: "작업정보", link: "/pages/repair/repair_work.html" },
       { label: "작업일지 설비A", link: "/pages/repair/worklog_a.html" },
@@ -78,7 +79,9 @@ const NAV_ITEMS = [
       { label: "특이사항", link: "/pages/admin/upload/special_note.html", roles: ["admin"] },
       { label: "결품업로드", link: "/pages/admin/upload/defect_upload.html", roles: ["admin"] },
       { label: "바코드등록", link: "/pages/admin/master/barcode.html", roles: ["admin"] },
-      { label: "유통기한 제외", link: "/pages/admin/master/expiry_exclude.html", roles: ["admin"] }
+      { label: "유통기한 제외", link: "/pages/admin/master/expiry_exclude.html", roles: ["admin"] },
+      { label: "입고검수 로그", link: "/pages/scan/scan_in_log.html", roles: ["admin"] },
+      { label: "출고검수 로그", link: "/pages/scan/scan_out_log.html", roles: ["admin"] }
     ]
   }
 ];
