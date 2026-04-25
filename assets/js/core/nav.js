@@ -17,6 +17,11 @@ const NAV_ITEMS = [
     link: "/pages/tools/pop.html"
   },
   {
+    title: "이적작업",
+    icon: "▣",
+    link: "/pages/tools/migrate.html"
+  },
+  {
     title: "스캔검수",
     icon: "▣",
     children: [
@@ -52,9 +57,18 @@ const NAV_ITEMS = [
       { label: "라벨입고", link: "/pages/repair/label_in.html" },
       { label: "입고정보", link: "/pages/repair/repair_in.html" },
       { label: "작업정보", link: "/pages/repair/repair_work.html" },
-      { label: "작업일지 설비A", link: "/pages/repair/worklog_a.html" },
-      { label: "작업일지 설비B", link: "/pages/repair/worklog_b.html" },
+      { label: "작업일지", link: "/pages/repair/worklog_a.html" },
+      { label: "작업인원", link: "/pages/repair/worklog_b.html" },
       { label: "작업검수스캔", link: "/pages/repair/worklog_scan.html" }
+    ]
+  },
+  {
+    title: "LCL정보",
+    icon: "▣",
+    children: [
+      { label: "LCL출고정보", link: "/pages/lcl/lcl_out.html" }
+      
+
     ]
   },
   {
@@ -79,12 +93,26 @@ const NAV_ITEMS = [
       { label: "특이사항", link: "/pages/admin/upload/special_note.html", roles: ["admin"] },
       { label: "결품업로드", link: "/pages/admin/upload/defect_upload.html", roles: ["admin"] },
       { label: "바코드등록", link: "/pages/admin/master/barcode.html", roles: ["admin"] },
-      { label: "유통기한 제외", link: "/pages/admin/master/expiry_exclude.html", roles: ["admin"] },
+      { label: "유통기한 제외", link: "/pages/admin/master/expiry_exclude.html", roles: ["admin"] }
+        ]
+  },
+  {
+    title: "로그 관리",
+    icon: "▣",
+    roles: ["admin"],
+    children: [
+      
       { label: "입고검수 로그", link: "/pages/scan/scan_in_log.html", roles: ["admin"] },
-      { label: "출고검수 로그", link: "/pages/scan/scan_out_log.html", roles: ["admin"] }
+      { label: "출고검수 로그", link: "/pages/scan/scan_out_log.html", roles: ["admin"] },
+      { label: "보수검수 로그", link: "/pages/repair/worklog_scan_history.html", roles: ["admin"] },
+      { label: "보수삭제 로그", link: "/pages/repair/worklog_scan_deleted.html", roles: ["admin"] },
+      { label: "LCL출고 로그", link: "/pages/lcl/lcl_out_history.html" }
     ]
   }
+
+
 ];
+
 
 export function preparePageContent(mountId = "app-nav", contentId = "page-content") {
   const mount = document.getElementById(mountId);

@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LCL 출고</title>
+
+  <link rel="icon" type="image/png" href="/assets/images/logo.png?v=1">
+
+  <link rel="stylesheet" href="/assets/css/font.css">
+  <link rel="stylesheet" href="/assets/css/common.css">
+  <link rel="stylesheet" href="/assets/css/nav.css?v=20260422">
+  <link rel="stylesheet" href="/assets/css/topbar.css">
+  <link rel="stylesheet" href="/assets/css/toolbar.css">
+  <link rel="stylesheet" href="/assets/css/table.css">
+  <link rel="stylesheet" href="/assets/css/modal.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    html,body{height:100%;margin:0;}
+    body{overflow:auto;}
+
+    #page-content,.wms-page-content{
+      height:100%;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .lcl-out-page{
+      flex:1;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+      background:#fff;
+      overflow:hidden;
+    }
+
+    #page-topbar,#lcl-out-toolbar,#page-status{flex:0 0 auto;}
+
+    .table-shell{overflow:auto !important;}
+
+    #print-area.table-shell{
+      flex:1 1 auto;
+      min-height:0;
+      min-width:0;
+      height:0;
+      overflow:auto !important;
+    }
+
+    #lcl-out-table{
+      min-width:2400px;
+      width:100%;
+    }
+
+    .lcl-out-table col:nth-child(1){width:44px;}
+    .lcl-out-table col:nth-child(2){width:80px;}
+    .lcl-out-table col:nth-child(3){width:90px;}
+    .lcl-out-table col:nth-child(4){width:100px;}
+    .lcl-out-table col:nth-child(5){width:100px;}
+    .lcl-out-table col:nth-child(6){width:110px;}
+    .lcl-out-table col:nth-child(7){width:170px;}
+    .lcl-out-table col:nth-child(8){width:100px;}
+    .lcl-out-table col:nth-child(9){width:100px;}
+    .lcl-out-table col:nth-child(10){width:120px;}
+    .lcl-out-table col:nth-child(11){width:70px;}
+    .lcl-out-table col:nth-child(12){width:70px;}
+    .lcl-out-table col:nth-child(13){width:70px;}
+    .lcl-out-table col:nth-child(14){width:100px;}
+    .lcl-out-table col:nth-child(15){width:260px;}
+    .lcl-out-table col:nth-child(16){width:220px;}
+    .lcl-out-table col:nth-child(17){width:140px;}
+    .lcl-out-table col:nth-child(18){width:240px;}
+    .lcl-out-table col:nth-child(19){width:140px;}
+    .lcl-out-table col:nth-child(20){width:140px;}
+    .lcl-out-table col:nth-child(21){width:170px;}
+
+    #lcl-out-table th:first-child,
+    #lcl-out-table td:first-child{
+      position:sticky;
+      left:0;
+      background:#fff;
+      z-index:30;
+      box-shadow:1px 0 0 #e5e7eb;
+    }
+
+    #lcl-out-table thead th:first-child{
+      z-index:50;
+    }
+
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      height:22px;
+      padding:0 8px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:800;
+      white-space:nowrap;
+    }
+
+    .badge-new{background:#e0f2fe;color:#0369a1;}
+    .badge-check{background:#fee2e2;color:#b91c1c;}
+    .badge-ship{background:#dcfce7;color:#15803d;}
+    .badge-part{background:#fef3c7;color:#92400e;}
+    .badge-done{background:#dcfce7;color:#166534;}
+    .badge-wait{background:#e2e8f0;color:#475569;}
+    .badge-out{background:#dbeafe;color:#1d4ed8;}
+
+    .qty-zero{color:#dc2626;font-weight:900;}
+
+    .out-btn{
+      height:24px;
+      border:1px solid #cbd5e1;
+      background:#fff;
+      border-radius:999px;
+      padding:0 8px;
+      font-size:12px;
+      font-weight:500;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+
+    .out-btn.done{
+      background:#dbeafe;
+      color:#1d4ed8;
+      border-color:#93c5fd;
+    }
+
+    @media (max-width:900px){
+      html,body{height:auto;min-height:100%;}
+      #page-content,.wms-page-content{height:auto;min-height:100vh;}
+      .lcl-out-page{height:auto;min-height:100vh;}
+
+      #print-area.table-shell{
+        height:auto !important;
+        min-height:520px;
+        flex:0 0 auto;
+      }
+    }
+
+    @media print {
+      body * {
+        visibility: hidden !important;
+      }
+
+      #page-topbar,
+      #page-topbar *,
+      #print-area,
+      #print-area * {
+        visibility: visible !important;
+      }
+
+      #lcl-out-toolbar,
+      #page-status,
+      #modal-root {
+        display: none !important;
+      }
+
+      #print-area {
+        position: absolute;
+        top: 65px;
+        left: 0;
+        width: 100%;
+        height: auto !important;
+        overflow: visible !important;
+      }
+
+      #lcl-out-table{
+        width:100% !important;
+        min-width:0 !important;
+        table-layout:auto !important;
+        font-size:10px !important;
+        border-collapse:collapse !important;
+      }
+
+      #lcl-out-table col{
+        width:auto !important;
+      }
+
+      #lcl-out-table th,
+      #lcl-out-table td{
+        display:none !important;
+        padding:2px 4px !important;
+        word-break:break-all !important;
+        white-space:normal !important;
+      }
+
+     
+      #lcl-out-table th:nth-child(2),
+      #lcl-out-table td:nth-child(2),
+      #lcl-out-table th:nth-child(3),
+      #lcl-out-table td:nth-child(3),
+      #lcl-out-table th:nth-child(6),
+      #lcl-out-table td:nth-child(6),
+      #lcl-out-table th:nth-child(7),
+      #lcl-out-table td:nth-child(7),
+      #lcl-out-table th:nth-child(8),
+      #lcl-out-table td:nth-child(8),
+      #lcl-out-table th:nth-child(9),
+      #lcl-out-table td:nth-child(9),
+      #lcl-out-table th:nth-child(10),
+      #lcl-out-table td:nth-child(10),
+      #lcl-out-table th:nth-child(11),
+      #lcl-out-table td:nth-child(11),
+      #lcl-out-table th:nth-child(12),
+      #lcl-out-table td:nth-child(12),
+      #lcl-out-table th:nth-child(13),
+      #lcl-out-table td:nth-child(13),
+      #lcl-out-table th:nth-child(14),
+      #lcl-out-table td:nth-child(14),
+      #lcl-out-table th:nth-child(17),
+      #lcl-out-table td:nth-child(17),
+      #lcl-out-table th:nth-child(18),
+      #lcl-out-table td:nth-child(18){
+        display:table-cell !important;
+      }
+
+    
+      #lcl-out-table th:nth-child(11),
+      #lcl-out-table td:nth-child(11),
+      #lcl-out-table th:nth-child(12),
+      #lcl-out-table td:nth-child(12),
+      #lcl-out-table th:nth-child(13),
+      #lcl-out-table td:nth-child(13){
+        width:28px !important;
+        min-width:28px !important;
+        max-width:28px !important;
+        text-align:center !important;
+        white-space:nowrap !important;
+      }
+
+     
+      #lcl-out-table th:nth-child(10),
+      #lcl-out-table td:nth-child(10){
+        width:45px !important;
+        text-align:right !important;
+      }
+      
+
+     
+      #lcl-out-table th:nth-child(17),
+      #lcl-out-table td:nth-child(17){
+        width:55px !important;
+      }
+
+   
+      #lcl-out-table th:nth-child(18),
+      #lcl-out-table td:nth-child(18){
+        width:180px !important;
+        min-width:180px !important;
+      }
+
+      #lcl-out-table th:first-child,
+      #lcl-out-table td:first-child{
+        position:static !important;
+        box-shadow:none !important;
+      }
+
+      @page{
+        size:landscape;
+        margin:6mm;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app-nav"></div>
+
+  <div id="page-content">
+    <div class="lcl-out-page">
+      <div id="page-topbar"></div>
+      <div id="lcl-out-toolbar"></div>
+
+      <div id="print-area" class="table-shell">
+        <table class="wms-table lcl-out-table" id="lcl-out-table">
+          <colgroup>
+            <col>
+            <col data-col-key="status_flag">
+            <col data-col-key="shipping_mark">
+            <col data-col-key="scan_in_status">
+            <col data-col-key="scan_out_status">
+            <col data-col-key="outbound_status">
+            <col data-col-key="invoice">
+            <col data-col-key="country">
+            <col data-col-key="outbound_qty">
+            <col data-col-key="ship_date">
+            <col data-col-key="pallet_kpp">
+            <col data-col-key="pallet_aj">
+            <col data-col-key="pallet_oneway">
+            <col data-col-key="total_qty">
+            <col data-col-key="issue">
+            <col data-col-key="customer_name">
+            <col data-col-key="manager">
+            <col data-col-key="note">
+            <col data-col-key="type">
+            <col data-col-key="user_name">
+            <col data-col-key="created_at">
+          </colgroup>
+
+          <thead>
+            <tr>
+              <th><div class="th-inner th-center"><input type="checkbox" class="chk" id="chk-all"></div></th>
+
+              <th data-col-key="status_flag"><div class="th-inner"><span class="th-label">구분</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="shipping_mark"><div class="th-inner"><span class="th-label">쉬핑마크</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="scan_in_status"><div class="th-inner"><span class="th-label">입고검수</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="scan_out_status"><div class="th-inner"><span class="th-label">출고검수</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="outbound_status"><div class="th-inner"><span class="th-label">출고구분</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+
+              <th data-col-key="invoice"><div class="th-inner"><span class="th-label">인보이스</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="country"><div class="th-inner"><span class="th-label">국가</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="ship_date"><div class="th-inner"><span class="th-label">출고일</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="outbound_qty"><div class="th-inner"><span class="th-label">수량</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+
+              <th data-col-key="pallet_kpp"><div class="th-inner"><span class="th-label">KPP</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="pallet_aj"><div class="th-inner"><span class="th-label">AJ</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="pallet_oneway"><div class="th-inner"><span class="th-label">일회용</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+
+              <th data-col-key="total_qty"><div class="th-inner"><span class="th-label">합계</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="issue"><div class="th-inner"><span class="th-label">상세특이사항</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="customer_name"><div class="th-inner"><span class="th-label">납품처명</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="manager"><div class="th-inner"><span class="th-label">담당자</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="note"><div class="th-inner"><span class="th-label">비고</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="type"><div class="th-inner"><span class="th-label">유형</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="user_name"><div class="th-inner"><span class="th-label">사용자</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="created_at"><div class="th-inner"><span class="th-label">등록일</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+            </tr>
+          </thead>
+
+          <tbody id="lcl-out-tbody"></tbody>
+        </table>
+      </div>
+
+      <div id="page-status" class="status-text no-print"></div>
+    </div>
+  </div>
+
+  <div id="modal-root"></div>
+
+  <script type="module" src="/assets/js/pages/lcl/lcl_out.js?v=20260425_17"></script>
+</body>
+</html>

@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>작업로그 스캔</title>
+
+  <link rel="icon" type="image/png" href="/assets/images/logo.png?v=1">
+  <link rel="stylesheet" href="/assets/css/font.css">
+  <link rel="stylesheet" href="/assets/css/common.css">
+  <link rel="stylesheet" href="/assets/css/nav.css?v=20260422">
+  <link rel="stylesheet" href="/assets/css/topbar.css">
+  <link rel="stylesheet" href="/assets/css/toolbar.css">
+  <link rel="stylesheet" href="/assets/css/table.css">
+  <link rel="stylesheet" href="/assets/css/modal.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    html,body{height:100%;margin:0;}
+    body{overflow:auto;}
+
+    #page-content,.wms-page-content{
+      height:100%;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .worklog-page{
+      flex:1;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+      background:#fff;
+      overflow:hidden;
+    }
+
+    #page-topbar,#worklog-toolbar,#page-status{flex:0 0 auto;}
+
+    .scan-panel{
+      flex:0 0 auto;
+      padding:10px 12px;
+      border-bottom:1px solid #e5e7eb;
+      background:#fff;
+    }
+
+    .scan-row{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      margin-bottom:8px;
+    }
+
+    .scan-row label{
+      width:76px;
+      font-size:13px;
+      font-weight:800;
+    }
+
+    .scan-input{
+      height:38px;
+      border:1px solid #cbd5e1;
+      padding:0 10px;
+      font-size:15px;
+      min-width:0;
+      box-sizing:border-box;
+    }
+
+    #invoiceInput{width:260px;}
+
+    #scanInput{
+      flex:1;
+      height:44px;
+      font-size:20px;
+      font-weight:900;
+      border:2px solid #2563eb;
+    }
+
+    .scan-btn{
+      height:38px;
+      padding:0 14px;
+      border:1px solid #cbd5e1;
+      background:#f8fafc;
+      font-weight:900;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+
+    .scan-btn.primary{
+      background:#2563eb;
+      border-color:#2563eb;
+      color:#fff;
+    }
+
+    .scan-btn.active{
+      background:#111827;
+      border-color:#111827;
+      color:#fff;
+    }
+
+    .summary-grid{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      border:1px solid #e5e7eb;
+      margin-bottom:8px;
+    }
+
+    .summary-item{
+      display:flex;
+      border-right:1px solid #e5e7eb;
+      border-bottom:1px solid #e5e7eb;
+      min-height:34px;
+    }
+
+    .summary-item span{
+      width:82px;
+      background:#f8fafc;
+      padding:8px;
+      font-size:13px;
+      font-weight:900;
+      box-sizing:border-box;
+    }
+
+    .summary-item strong{
+      flex:1;
+      padding:8px;
+      font-size:13px;
+      font-weight:800;
+      min-width:0;
+      word-break:break-all;
+    }
+
+    .summary-item.wide{grid-column:span 2;}
+
+    .expiry-box{
+      margin-top:8px;
+      border:1px solid #e5e7eb;
+      background:#fff;
+    }
+
+    .expiry-title{
+      padding:8px 10px;
+      background:#f8fafc;
+      border-bottom:1px solid #e5e7eb;
+      font-size:13px;
+      font-weight:900;
+    }
+
+    .expiry-table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:13px;
+    }
+
+    .expiry-table th,
+    .expiry-table td{
+      padding:6px 8px;
+      border-bottom:1px solid #e5e7eb;
+      text-align:left;
+      white-space:nowrap;
+    }
+
+    .expiry-table th{
+      background:#fff;
+      font-weight:900;
+      color:#475569;
+    }
+
+    .expiry-table .qty{
+      text-align:right;
+      font-weight:900;
+    }
+
+    .date-filter{
+      display:flex;
+      gap:6px;
+      flex-wrap:wrap;
+      align-items:center;
+      margin-top:8px;
+    }
+
+    .date-filter input{
+      height:32px;
+      border:1px solid #cbd5e1;
+      padding:0 8px;
+      font-weight:800;
+    }
+
+    .scan-status{
+      padding:8px 10px;
+      background:#f1f5f9;
+      font-size:13px;
+      font-weight:900;
+      border:1px solid #e5e7eb;
+    }
+
+    .scan-status.ok{background:#dcfce7;color:#15803d;}
+    .scan-status.warn{background:#fef3c7;color:#92400e;}
+    .scan-status.err{background:#fee2e2;color:#b91c1c;}
+
+    .table-title{
+      padding:8px 12px;
+      border-top:1px solid #e5e7eb;
+      border-bottom:1px solid #e5e7eb;
+      font-size:13px;
+      font-weight:900;
+      background:#fff;
+    }
+
+    .table-shell{overflow:auto !important;}
+
+    #print-area.table-shell{
+      flex:1 1 auto;
+      min-height:0;
+      min-width:0;
+      height:0;
+      overflow:auto !important;
+    }
+
+    #worklog-table{
+      min-width:2700px;
+      width:100%;
+    }
+
+    #worklog-table th:first-child,
+    #worklog-table td:first-child{
+      position:sticky;
+      left:0;
+      background:#fff;
+      z-index:30;
+      box-shadow:1px 0 0 #e5e7eb;
+    }
+
+    #worklog-table thead th:first-child{z-index:50;}
+
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      height:22px;
+      padding:0 8px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:800;
+      white-space:nowrap;
+    }
+
+    .badge-done{background:#dcfce7;color:#166534;}
+    .badge-part{background:#fef3c7;color:#92400e;}
+    .badge-wait{background:#e2e8f0;color:#475569;}
+    .badge-cell{background:#dbeafe;color:#1d4ed8;}
+    .badge-rack{background:#f3e8ff;color:#7e22ce;}
+    .badge-eq{background:#fee2e2;color:#b91c1c;}
+
+    @media (max-width:900px){
+      html,body{height:auto;min-height:100%;}
+      #page-content,.wms-page-content{height:auto;min-height:100vh;}
+      .worklog-page{height:auto;min-height:100vh;}
+      .scan-row{flex-wrap:wrap;}
+      .scan-row label{width:100%;}
+      #invoiceInput,#scanInput{width:100%;flex:1 1 100%;}
+      .summary-grid{grid-template-columns:1fr;}
+      .summary-item.wide{grid-column:span 1;}
+      #print-area.table-shell{height:auto;min-height:520px;}
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app-nav"></div>
+
+  <div id="page-content">
+    <div class="worklog-page">
+      <div id="page-topbar"></div>
+
+      <div class="scan-panel">
+        <div class="scan-row">
+          <label for="invoiceInput">Invoice</label>
+          <input id="invoiceInput" class="scan-input" type="text" autocomplete="off">
+          <button id="btnSearchInvoice" class="scan-btn primary" type="button">조회</button>
+        </div>
+
+        <div class="summary-grid">
+          <div class="summary-item"><span>출고일</span><strong id="shipDate">-</strong></div>
+          <div class="summary-item"><span>국가</span><strong id="country">-</strong></div>
+          <div class="summary-item"><span>위치</span><strong id="location">-</strong></div>
+          <div class="summary-item"><span>제품</span><strong id="productQty">0</strong></div>
+          <div class="summary-item"><span>외박스</span><strong id="outerBoxQty">0</strong></div>
+          <div class="summary-item"><span>총합계</span><strong id="totalQty">0</strong></div>
+          <div class="summary-item"><span>작업방식</span><strong id="workTypeText">CELL</strong></div>
+        </div>
+
+        <div class="scan-row">
+          <label for="scanInput">스캔</label>
+          <input id="scanInput" class="scan-input" type="text" placeholder="바코드 / 코드 / 박스번호" autocomplete="off">
+          <button id="btnCell" class="scan-btn active" type="button">CELL</button>
+          <button id="btnRack" class="scan-btn" type="button">매대</button>
+          <button id="btnEquipment" class="scan-btn" type="button">설비</button>
+        </div>
+
+        <div class="summary-grid">
+          <div class="summary-item"><span>코드</span><strong id="materialNo">-</strong></div>
+          <div class="summary-item"><span>박스번호</span><strong id="boxNo">-</strong></div>
+          <div class="summary-item wide"><span>자재내역</span><strong id="materialName">-</strong></div>
+          <div class="summary-item"><span>출고</span><strong id="outboundQty">0</strong></div>
+          <div class="summary-item"><span>입고</span><strong id="inboundQty">0</strong></div>
+          <div class="summary-item"><span>비교</span><strong id="comparison">0</strong></div>
+          <div class="summary-item"><span>비고</span><strong id="note">-</strong></div>
+        </div>
+
+        <div class="expiry-box">
+          <div class="expiry-title">유통기한 / 매칭 결과</div>
+          <table class="expiry-table">
+            <thead>
+              <tr>
+                <th>박스번호</th>
+                <th>자재내역</th>
+                <th>입고</th>
+                <th>제조일자</th>
+                <th>제조일자수정</th>
+                <th>유통기한</th>
+                <th>유통기한수정</th>
+              </tr>
+            </thead>
+            <tbody id="expiryBody">
+              <tr><td colspan="7">스캔 결과 없음</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="date-filter">
+          <button type="button" class="scan-btn active" id="btnToday">당일</button>
+          <button type="button" class="scan-btn" id="btnAll">전체조회</button>
+          <input id="dateStart" type="date">
+          <input id="dateEnd" type="date">
+          <button type="button" class="scan-btn" id="btnDateSearch">날짜조회</button>
+          <input id="invoiceSearchInput" type="text" placeholder="인보이스 검색">
+          <button type="button" class="scan-btn primary" id="btnInvoiceSearch">인보이스검색</button>
+        </div>
+
+        <div id="scanStatus" class="scan-status">Invoice 조회 후 스캔하세요.</div>
+      </div>
+
+      <div id="worklog-toolbar"></div>
+
+      <div class="table-title">작업로그 목록</div>
+
+      <div id="print-area" class="table-shell">
+        <table class="wms-table worklog-table" id="worklog-table">
+          <colgroup>
+            <col>
+            <col data-col-key="list_no">
+            <col data-col-key="scan_type">
+            <col data-col-key="invoice">
+            <col data-col-key="ship_date">
+            <col data-col-key="country">
+            <col data-col-key="location">
+            <col data-col-key="material_no">
+            <col data-col-key="box_no">
+            <col data-col-key="material_name">
+            <col data-col-key="outbound_qty">
+            <col data-col-key="inbound_qty">
+            <col data-col-key="comparison">
+            <col data-col-key="mfg_date">
+            <col data-col-key="mfg_date_edit">
+            <col data-col-key="exp_date">
+            <col data-col-key="exp_date_edit">
+            <col data-col-key="product_qty">
+            <col data-col-key="outer_box_qty">
+            <col data-col-key="total_qty">
+            <col data-col-key="work_type">
+            <col data-col-key="check_status">
+            <col data-col-key="scan_time">
+            <col data-col-key="user_name">
+          </colgroup>
+
+          <thead>
+            <tr>
+              <th><div class="th-inner th-center"><input type="checkbox" class="chk" id="chk-all"></div></th>
+              <th data-col-key="list_no"><div class="th-inner"><span class="th-label">NO</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="scan_type"><div class="th-inner"><span class="th-label">입고검수</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="invoice"><div class="th-inner"><span class="th-label">인보이스</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="ship_date"><div class="th-inner"><span class="th-label">출고일</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="country"><div class="th-inner"><span class="th-label">국가</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="location"><div class="th-inner"><span class="th-label">위치</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="material_no"><div class="th-inner"><span class="th-label">코드</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="box_no"><div class="th-inner"><span class="th-label">박스번호</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="material_name"><div class="th-inner"><span class="th-label">자재내역</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="outbound_qty"><div class="th-inner"><span class="th-label">출고</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="inbound_qty"><div class="th-inner"><span class="th-label">입고</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="comparison"><div class="th-inner"><span class="th-label">비교</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="mfg_date"><div class="th-inner"><span class="th-label">제조일자</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="mfg_date_edit"><div class="th-inner"><span class="th-label">제조일자수정</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="exp_date"><div class="th-inner"><span class="th-label">유통기한</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="exp_date_edit"><div class="th-inner"><span class="th-label">유통기한수정</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="product_qty"><div class="th-inner"><span class="th-label">제품</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="outer_box_qty"><div class="th-inner"><span class="th-label">외박스</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="total_qty"><div class="th-inner"><span class="th-label">합계</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="work_type"><div class="th-inner"><span class="th-label">구분</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="check_status"><div class="th-inner"><span class="th-label">검수</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="scan_time"><div class="th-inner"><span class="th-label">작업시간</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="user_name"><div class="th-inner"><span class="th-label">작업자</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+            </tr>
+          </thead>
+
+          <tbody id="worklog-tbody"></tbody>
+        </table>
+      </div>
+
+      <div id="page-status" class="status-text no-print"></div>
+    </div>
+  </div>
+
+  <div id="modal-root"></div>
+
+  <audio id="sound-error" src="/sound/error.mp3" preload="auto"></audio>
+  <audio id="sound-dup" src="/sound/dup.mp3" preload="auto"></audio>
+  <audio id="sound-modal" src="/sound/modal.mp3" preload="auto"></audio>
+  <audio id="sound-ok" src="/sound/ok.mp3" preload="auto"></audio>
+
+  <script type="module" src="/assets/js/pages/repair/worklog_scan.js?v=20260425_09"></script>
+</body>
+</html>
