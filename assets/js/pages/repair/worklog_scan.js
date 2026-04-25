@@ -187,10 +187,15 @@ function bindEvents() {
   });
 
   document.getElementById("invoiceSearchInput")?.addEventListener("keydown", (e) => {
-    if (e.key !== "Enter") return;
-    invoiceFilter = clean(e.target.value);
-    renderTable(true);
-  });
+  if (e.key !== "Enter") return;
+  invoiceFilter = clean(e.target.value);
+  renderTable(true);
+});
+
+
+document.getElementById("btnScanRun")?.addEventListener("click", () => {
+  handleScan();
+});
 
   document.getElementById("expiryBody")?.addEventListener("change", async (e) => {
     const input = e.target;
