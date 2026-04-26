@@ -106,6 +106,44 @@ border-color:#9ecbff;
 .status-btn:hover{
 filter:brightness(0.97);
 }
+
+@media (max-width:640px){
+
+  html,body{
+    height:auto;
+    min-height:100%;
+  }
+
+  #page-content,
+  .wms-page-content{
+    height:auto;
+    min-height:100vh;
+  }
+
+  .free-page{
+    height:auto;
+    min-height:100vh;
+    overflow:visible;
+  }
+
+  #print-area.table-shell{
+    flex:0 0 auto;
+    height:auto !important;
+    min-height:420px;
+    max-height:60vh;
+    overflow:auto !important;
+  }
+
+  #free-table{
+    min-width:1250px;
+  }
+
+  #free-toolbar{
+    overflow:visible !important;
+  }
+}
+
+
 </style>
 </head>
 
@@ -165,7 +203,7 @@ filter:brightness(0.97);
 
 <div id="modal-root"></div>
 
-<script type="module" src="/assets/js/pages/issues/expiry_free.js?v=20260426_05"></script>
+<script type="module" src="/assets/js/pages/issues/expiry_free.js?v=20260426_06"></script>
 
 </body>
 </html>
