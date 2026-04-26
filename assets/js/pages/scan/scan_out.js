@@ -2,6 +2,7 @@ import { checkAuth, getLoginUser } from "/assets/js/core/auth.js";
 import { renderNav, preparePageContent } from "/assets/js/core/nav.js?v=20260422";
 import { createTopbar } from "/assets/js/shared/topbar.js";
 import { createModal } from "/assets/js/shared/modal.js";
+import { refreshInvoiceProgress } from "/assets/js/shared/invoice_progress_update.js";
 
 checkAuth();
 preparePageContent("app-nav", "page-content");
@@ -18,6 +19,10 @@ const WMS_TABLE = "wms_attribute_b";
 const DEFECT_TABLE = "defect_upload";
 const SPECIAL_TABLE = "special_note";
 const BARCODE_TABLE = "barcode_master";
+
+const SCAN_IN_LOG_TABLE = "scan_in_log";
+const WORKLOG_SCAN_TABLE = "worklog_scan";
+
 const LOG_TABLE = "scan_out_log";
 const FETCH_PAGE_SIZE = 1000;
 
@@ -53,6 +58,10 @@ let barcodeRows = [];
 let specialRows = [];
 let defectRowsCache = [];
 let logRows = [];
+
+let scanInRows = [];
+let repairRows = [];
+
 let scanRows = [];
 let scanLogs = [];
 
@@ -176,14 +185,26 @@ async function loadInvoice() {
   setScanStatus("데이터 조회 중...", "");
 
   try {
-    const [docRows, itemRows, wmsData, defectRows, specialData, barcodeData, logData] = await Promise.all([
+    const [
+      docRows,
+      itemRows,
+      wmsData,
+      defectRows,
+      specialData,
+      barcodeData,
+      logData,
+      scanInData,
+      repairData
+    ] = await Promise.all([
       fetchAllRows(SAP_DOC_TABLE, invoice),
       fetchAllRows(SAP_ITEM_TABLE, invoice),
       fetchAllRows(WMS_TABLE, invoice),
       fetchAllRows(DEFECT_TABLE, invoice),
       fetchAllRows(SPECIAL_TABLE, invoice),
       fetchAllRows(BARCODE_TABLE),
-      fetchAllRows(LOG_TABLE, invoice)
+      fetchAllRows(LOG_TABLE, invoice),
+      fetchAllRows(SCAN_IN_LOG_TABLE, invoice),
+      fetchAllRows(WORKLOG_SCAN_TABLE, invoice)
     ]);
 
     sapDocRows = docRows;
@@ -193,6 +214,9 @@ async function loadInvoice() {
     specialRows = specialData;
     barcodeRows = barcodeData;
     logRows = logData;
+
+    scanInRows = scanInData;
+    repairRows = repairData;
 
     buildBarcodeMaps();
     makeScanRows();
@@ -283,6 +307,8 @@ function makeScanRows() {
     const totalQty = toNumber(item.total_qty);
     const comparison = inboundQty - outboundQty;
 
+    const readyStatus = getReadyStatus(materialNo, boxNo, totalQty);
+
     return {
       list_no: clean(item.list_no),
       material_no: materialNo,
@@ -290,6 +316,7 @@ function makeScanRows() {
       material_name: clean(item.material_name),
       total_qty: totalQty,
       work: totalQty > 0 ? "O" : "X",
+      ready_status: readyStatus,
       outbound_qty: outboundQty,
       inbound_qty: inboundQty,
       comparison,
@@ -300,6 +327,40 @@ function makeScanRows() {
       status_text: ""
     };
   });
+}
+
+function getReadyStatus(materialNo, boxNo, totalQty) {
+  const inv = norm(currentInvoice);
+  const m = norm(materialNo);
+  const b = normBox(boxNo);
+
+  if (totalQty === 0) {
+    const found = scanInRows.some(row => {
+      const rowInvoice = norm(row.invoice);
+      const rowMaterial = norm(row.material_no);
+      const status = clean(row.scan_status || row.status);
+
+      return rowInvoice === inv
+        && rowMaterial === m
+        && status.includes("완료");
+    });
+
+    return found ? "입고완료" : "입고대기";
+  }
+
+  const found = repairRows.some(row => {
+    const rowInvoice = norm(row.invoice);
+    const rowMaterial = norm(row.material_no);
+    const rowBox = normBox(row.box_no);
+    const status = clean(row.check_status);
+
+    return rowInvoice === inv
+      && rowMaterial === m
+      && rowBox === b
+      && status === "작업검수완료";
+  });
+
+  return found ? "보수완료" : "보수대기";
 }
 
 function restoreScanLog() {
@@ -420,6 +481,15 @@ async function handleScan() {
     return;
   }
 
+  if (!clean(target.ready_status).includes("완료")) {
+    playSound("error");
+    addScanLog("err", `${value} - ${target.ready_status}`);
+    setScanStatus(`출고불가: ${target.ready_status}`, "err");
+    scanInput.value = "";
+    scanInput.focus();
+    return;
+  }
+
   if (target.scan) {
     target.is_dup = true;
     playSound("dup");
@@ -473,7 +543,10 @@ async function saveScanLog(row) {
   if (error) {
     console.error(error);
     setPageStatus("출고검수 로그 저장 실패");
+    return;
   }
+
+  await refreshInvoiceProgress(currentInvoice);
 }
 
 function findScanTarget(value) {
@@ -509,7 +582,7 @@ function renderTable() {
   if (!scanRows.length) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="11" class="table-empty">조회된 자재내역이 없습니다.</td>
+        <td colspan="12" class="table-empty">조회된 자재내역이 없습니다.</td>
       </tr>
     `;
     return;
@@ -523,10 +596,12 @@ function renderTable() {
 
   tbody.innerHTML = rows.map(row => {
     const status = getRowStatus(row);
+    const readyBadge = getReadyBadge(row.ready_status);
 
     return `
       <tr class="${status.rowClass}">
         <td class="mono-num">${esc(row.list_no)}</td>
+        <td><span class="scan-badge ${readyBadge}">${esc(row.ready_status)}</span></td>
         <td><span class="scan-badge ${status.badgeClass}">${esc(status.text)}</span></td>
         <td class="mono-num">${esc(row.box_no)}</td>
         <td>${esc(row.material_name)}</td>
@@ -540,6 +615,15 @@ function renderTable() {
       </tr>
     `;
   }).join("");
+}
+
+function getReadyBadge(status) {
+  const value = clean(status);
+
+  if (value.includes("완료")) return "checked";
+  if (value.includes("대기")) return "block";
+
+  return "wait";
 }
 
 function getRowStatus(row) {

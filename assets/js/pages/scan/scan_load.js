@@ -6,7 +6,6 @@ import { refreshInvoiceProgress } from "/assets/js/shared/invoice_progress_updat
 
 checkAuth();
 preparePageContent("app-nav", "page-content");
-
 renderNav({ mountId: "app-nav" });
 
 const SUPABASE_URL = "https://pdadmygpowrhrxxwawak.supabase.co";
@@ -19,7 +18,12 @@ const WMS_TABLE = "wms_attribute_b";
 const DEFECT_TABLE = "defect_upload";
 const SPECIAL_TABLE = "special_note";
 const BARCODE_TABLE = "barcode_master";
-const LOG_TABLE = "scan_in_log";
+
+const SCAN_IN_LOG_TABLE = "scan_in_log";
+const WORKLOG_SCAN_TABLE = "worklog_scan";
+const SCAN_OUT_LOG_TABLE = "scan_out_log";
+const LOG_TABLE = "scan_load_log";
+
 const FETCH_PAGE_SIZE = 1000;
 
 const loginUser = getLoginUser();
@@ -31,7 +35,7 @@ const btnSpecialNote = document.getElementById("btnSpecialNote");
 const scanInput = document.getElementById("scanInput");
 const scanStatus = document.getElementById("scanStatus");
 const scanLogList = document.getElementById("scanLogList");
-const tbody = document.getElementById("scan-in-tbody");
+const tbody = document.getElementById("scan-load-tbody");
 const pageStatus = document.getElementById("page-status");
 
 const elCountry = document.getElementById("country");
@@ -53,7 +57,12 @@ let wmsRows = [];
 let barcodeRows = [];
 let specialRows = [];
 let defectRowsCache = [];
-let logRows = [];
+
+let scanInRows = [];
+let repairRows = [];
+let outRows = [];
+let loadRows = [];
+
 let scanRows = [];
 let scanLogs = [];
 
@@ -76,8 +85,8 @@ const specialModal = createModal({
 
 createTopbar({
   mountId: "page-topbar",
-  title: "입고 검수",
-  subtitle: "Invoice 조회 후 바코드 / 코드 / 박스번호 스캔",
+  title: "상차 검수",
+  subtitle: "출고검수 완료 건만 상차검수 가능",
   rightHtml: `<div class="wms-topbar-chip">USER<strong>${esc(currentUserName)}</strong></div>`
 });
 
@@ -101,7 +110,6 @@ function bindEvents() {
     e.preventDefault();
 
     if (scanLocked) return;
-
     handleScan();
   });
 
@@ -113,7 +121,7 @@ function bindEvents() {
 
   btnUnregContinue?.addEventListener("click", closeUnregModal);
 
-  document.querySelectorAll("#scan-in-table thead th[data-sort-key]").forEach(th => {
+  document.querySelectorAll("#scan-load-table thead th[data-sort-key]").forEach(th => {
     th.addEventListener("click", () => {
       const key = th.dataset.sortKey;
 
@@ -141,12 +149,9 @@ async function fetchAllRows(tableName, invoice = "") {
       .select("*")
       .range(from, to);
 
-    if (invoice) {
-      query = query.eq("invoice", invoice);
-    }
+    if (invoice) query = query.eq("invoice", invoice);
 
     const { data, error } = await query;
-
     if (error) throw error;
 
     const rows = Array.isArray(data) ? data : [];
@@ -177,13 +182,27 @@ async function loadInvoice() {
   setScanStatus("데이터 조회 중...", "");
 
   try {
-    const [docRows, itemRows, wmsData, defectRows, specialData, barcodeData, logData] = await Promise.all([
+    const [
+      docRows,
+      itemRows,
+      wmsData,
+      defectRows,
+      specialData,
+      barcodeData,
+      scanInData,
+      repairData,
+      outData,
+      loadData
+    ] = await Promise.all([
       fetchAllRows(SAP_DOC_TABLE, invoice),
       fetchAllRows(SAP_ITEM_TABLE, invoice),
       fetchAllRows(WMS_TABLE, invoice),
       fetchAllRows(DEFECT_TABLE, invoice),
       fetchAllRows(SPECIAL_TABLE, invoice),
       fetchAllRows(BARCODE_TABLE),
+      fetchAllRows(SCAN_IN_LOG_TABLE, invoice),
+      fetchAllRows(WORKLOG_SCAN_TABLE, invoice),
+      fetchAllRows(SCAN_OUT_LOG_TABLE, invoice),
       fetchAllRows(LOG_TABLE, invoice)
     ]);
 
@@ -193,18 +212,23 @@ async function loadInvoice() {
     defectRowsCache = defectRows;
     specialRows = specialData;
     barcodeRows = barcodeData;
-    logRows = logData;
+
+    scanInRows = scanInData;
+    repairRows = repairData;
+    outRows = outData;
+    loadRows = loadData;
 
     buildBarcodeMaps();
     makeScanRows();
-    restoreScanLog();
+    restoreOutStatus();
+    restoreLoadStatus();
     buildScanTargetMap();
 
     renderSummary(defectRows);
     renderTable();
 
     playSound("modal");
-    setPageStatus(`${num(scanRows.length)}건 조회 / 검수이력 ${num(logRows.length)}건`);
+    setPageStatus(`${num(scanRows.length)}건 조회 / 상차검수이력 ${num(loadRows.length)}건`);
     setScanStatus("스캔 대기", "ok");
 
     scanInput.value = "";
@@ -232,10 +256,7 @@ function buildBarcodeMaps() {
       if (!barcodeByMaterialBox.has(key)) barcodeByMaterialBox.set(key, row);
     }
 
-    if (!barcodeByMaterial.has(materialNo)) {
-      barcodeByMaterial.set(materialNo, []);
-    }
-
+    if (!barcodeByMaterial.has(materialNo)) barcodeByMaterial.set(materialNo, []);
     barcodeByMaterial.get(materialNo).push(row);
   });
 }
@@ -284,6 +305,8 @@ function makeScanRows() {
     const totalQty = toNumber(item.total_qty);
     const comparison = inboundQty - outboundQty;
 
+    const readyStatus = getReadyStatus(materialNo, boxNo, totalQty);
+
     return {
       list_no: clean(item.list_no),
       material_no: materialNo,
@@ -291,49 +314,105 @@ function makeScanRows() {
       material_name: clean(item.material_name),
       total_qty: totalQty,
       work: totalQty > 0 ? "O" : "X",
+      ready_status: readyStatus,
+      out_status: "출고대기",
+      load_status: "상차대기",
       outbound_qty: outboundQty,
       inbound_qty: inboundQty,
       comparison,
-      scan: "",
       barcode: clean(barcodeRow?.barcode),
       scan_user: "",
-      is_dup: false,
-      status_text: ""
+      is_dup: false
     };
   });
 }
 
-function restoreScanLog() {
-  if (!logRows.length) return;
+function getReadyStatus(materialNo, boxNo, totalQty) {
+  const inv = norm(currentInvoice);
+  const m = norm(materialNo);
+  const b = normBox(boxNo);
 
-  const latestMap = new Map();
+  if (totalQty === 0) {
+    const found = scanInRows.some(row => {
+      const rowInvoice = norm(row.invoice);
+      const rowMaterial = norm(row.material_no);
+      const status = clean(row.scan_status || row.status);
 
-  [...logRows]
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-    .forEach(log => {
-      const keys = makeLogKeys(log);
-
-      keys.forEach(key => {
-        if (key && !latestMap.has(key)) {
-          latestMap.set(key, log);
-        }
-      });
+      return rowInvoice === inv
+        && rowMaterial === m
+        && status.includes("완료");
     });
 
-  scanRows.forEach(row => {
-    const keys = makeRowKeys(row);
-    const log = keys.map(key => latestMap.get(key)).find(Boolean);
+    return found ? "입고완료" : "입고대기";
+  }
 
+  const found = repairRows.some(row => {
+    const rowInvoice = norm(row.invoice);
+    const rowMaterial = norm(row.material_no);
+    const rowBox = normBox(row.box_no);
+    const status = clean(row.check_status || row.scan_status);
+
+    return rowInvoice === inv
+      && rowMaterial === m
+      && rowBox === b
+      && status.includes("완료");
+  });
+
+  return found ? "보수완료" : "보수대기";
+}
+
+function restoreOutStatus() {
+  const latestMap = makeLatestMap(outRows);
+
+  scanRows.forEach(row => {
+    const log = findLatestLog(row, latestMap);
     if (!log) return;
 
-    row.scan = clean(log.scan_status);
-    row.scan_user = clean(log.scan_user);
-    row.is_dup = false;
+    const status = clean(log.scan_status);
+
+    if (status.includes("출고검수완료")) {
+      row.out_status = "출고검수완료";
+    }
+  });
+}
+
+function restoreLoadStatus() {
+  const latestMap = makeLatestMap(loadRows);
+
+  scanRows.forEach(row => {
+    const log = findLatestLog(row, latestMap);
+    if (!log) return;
+
+    const status = clean(log.scan_status);
+
+    if (status.includes("상차검수완료")) {
+      row.load_status = "상차검수완료";
+      row.scan_user = clean(log.scan_user);
+    }
 
     if (!row.barcode && log.barcode) {
       row.barcode = clean(log.barcode);
     }
   });
+}
+
+function makeLatestMap(rows) {
+  const map = new Map();
+
+  [...rows]
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+    .forEach(log => {
+      makeLogKeys(log).forEach(key => {
+        if (key && !map.has(key)) map.set(key, log);
+      });
+    });
+
+  return map;
+}
+
+function findLatestLog(row, map) {
+  const keys = makeRowKeys(row);
+  return keys.map(key => map.get(key)).find(Boolean);
 }
 
 function makeRowKeys(row) {
@@ -421,7 +500,25 @@ async function handleScan() {
     return;
   }
 
-  if (target.scan) {
+  if (!clean(target.ready_status).includes("완료")) {
+    playSound("error");
+    addScanLog("err", `${value} - ${target.ready_status}`);
+    setScanStatus(`상차불가: ${target.ready_status}`, "err");
+    scanInput.value = "";
+    scanInput.focus();
+    return;
+  }
+
+  if (!clean(target.out_status).includes("완료")) {
+    playSound("error");
+    addScanLog("err", `${value} - 출고검수대기`);
+    setScanStatus("상차불가: 출고검수 완료 후 상차검수 가능", "err");
+    scanInput.value = "";
+    scanInput.focus();
+    return;
+  }
+
+  if (clean(target.load_status).includes("완료")) {
     target.is_dup = true;
     playSound("dup");
     addScanLog("dup", `${value} (${target.box_no || "-"}) - ${target.material_name}`);
@@ -432,9 +529,7 @@ async function handleScan() {
     return;
   }
 
-  const beforeStatus = getBaseStatus(target);
-
-  target.scan = beforeStatus === "부분입고" ? "부분입고검수" : "입고검수완료";
+  target.load_status = "상차검수완료";
   target.scan_user = currentUserName;
   target.is_dup = false;
 
@@ -443,7 +538,7 @@ async function handleScan() {
   playSound("ok");
   addScanLog("ok", `${value} (${target.box_no || "-"}) - ${target.material_name}`);
   renderTable();
-  setScanStatus(`${target.scan}: ${target.material_no} / ${target.box_no || "-"}`, "ok");
+  setScanStatus(`상차검수완료: ${target.material_no} / ${target.box_no || "-"}`, "ok");
 
   scanInput.value = "";
   scanInput.focus();
@@ -458,7 +553,7 @@ async function saveScanLog(row) {
     .insert([{
       invoice: currentInvoice,
       list_no: row.list_no,
-      scan_status: row.scan,
+      scan_status: "상차검수완료",
 
       box_no: row.box_no,
       material_name: row.material_name,
@@ -475,8 +570,10 @@ async function saveScanLog(row) {
 
   if (error) {
     console.error(error);
-    setPageStatus("검수 로그 저장 실패");
+    setPageStatus("상차검수 로그 저장 실패");
+    return;
   }
+
   await refreshInvoiceProgress(currentInvoice);
 }
 
@@ -489,9 +586,11 @@ function findScanTarget(value) {
 
 function openUnregModal(value) {
   scanLocked = true;
+
   if (unregCode) unregCode.textContent = value || "-";
   if (unregCheck) unregCheck.checked = false;
   if (btnUnregContinue) btnUnregContinue.disabled = true;
+
   unregModal?.classList.add("show");
 
   setTimeout(() => {
@@ -513,25 +612,26 @@ function renderTable() {
   if (!scanRows.length) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="11" class="table-empty">조회된 자재내역이 없습니다.</td>
+        <td colspan="13" class="table-empty">조회된 자재내역이 없습니다.</td>
       </tr>
     `;
     return;
   }
 
-  scanRows.forEach(row => {
-    row.status_text = getRowStatus(row).text;
-  });
-
   const rows = [...scanRows].sort((a, b) => compareValue(a[sortKey], b[sortKey], sortDir));
 
   tbody.innerHTML = rows.map(row => {
-    const status = getRowStatus(row);
+    const readyBadge = getReadyBadge(row.ready_status);
+    const outBadge = getStatusBadge(row.out_status);
+    const loadStatus = getLoadStatus(row);
+    const loadBadge = getStatusBadge(loadStatus.text);
 
     return `
-      <tr class="${status.rowClass}">
+      <tr class="${loadStatus.rowClass}">
         <td class="mono-num">${esc(row.list_no)}</td>
-        <td><span class="scan-badge ${status.badgeClass}">${esc(status.text)}</span></td>
+        <td><span class="scan-badge ${readyBadge}">${esc(row.ready_status)}</span></td>
+        <td><span class="scan-badge ${outBadge}">${esc(row.out_status)}</span></td>
+        <td><span class="scan-badge ${loadBadge}">${esc(loadStatus.text)}</span></td>
         <td class="mono-num">${esc(row.box_no)}</td>
         <td>${esc(row.material_name)}</td>
         <td class="mono-num">${esc(row.work)}</td>
@@ -546,36 +646,35 @@ function renderTable() {
   }).join("");
 }
 
-function getBaseStatus(row) {
-  if (toNumber(row.inbound_qty) === 0) return "미입고";
-  if (toNumber(row.inbound_qty) === toNumber(row.outbound_qty)) return "입고완료";
-  return "부분입고";
+function getReadyBadge(status) {
+  const value = clean(status);
+
+  if (value.includes("완료")) return "checked";
+  if (value.includes("대기")) return "block";
+
+  return "wait";
 }
 
-function getRowStatus(row) {
+function getStatusBadge(status) {
+  const value = clean(status);
+
+  if (value.includes("완료")) return "checked";
+  if (value.includes("중복")) return "dup";
+  if (value.includes("대기")) return "wait";
+
+  return "wait";
+}
+
+function getLoadStatus(row) {
   if (row.is_dup) {
-    return { text:"중복", rowClass:"scan-row-dup", badgeClass:"dup" };
+    return { text: "중복", rowClass: "scan-row-dup" };
   }
 
-  if (clean(row.scan) === "부분입고검수") {
-    return { text:"부분입고검수", rowClass:"scan-row-checked", badgeClass:"checked" };
+  if (clean(row.load_status).includes("완료")) {
+    return { text: "상차검수완료", rowClass: "scan-row-checked" };
   }
 
-  if (clean(row.scan) === "입고검수완료") {
-    return { text:"검수완료", rowClass:"scan-row-checked", badgeClass:"checked" };
-  }
-
-  const base = getBaseStatus(row);
-
-  if (base === "미입고") {
-    return { text:"미입고", rowClass:"", badgeClass:"wait" };
-  }
-
-  if (base === "입고완료") {
-    return { text:"입고완료", rowClass:"", badgeClass:"complete" };
-  }
-
-  return { text:"부분입고", rowClass:"", badgeClass:"partial" };
+  return { text: "상차대기", rowClass: "" };
 }
 
 function addScanLog(type, text) {

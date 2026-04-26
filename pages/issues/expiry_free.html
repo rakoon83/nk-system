@@ -1,0 +1,171 @@
+<!-- /pages/issues/expiry_free.html -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>자유 등록 관리</title>
+
+<link rel="icon" type="image/png" href="/assets/images/logo.png?v=1">
+
+<link rel="stylesheet" href="/assets/css/font.css">
+<link rel="stylesheet" href="/assets/css/common.css">
+<link rel="stylesheet" href="/assets/css/nav.css?v=20260422">
+<link rel="stylesheet" href="/assets/css/topbar.css">
+<link rel="stylesheet" href="/assets/css/toolbar.css">
+<link rel="stylesheet" href="/assets/css/table.css">
+<link rel="stylesheet" href="/assets/css/modal.css">
+
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+html,body{
+height:100%;
+margin:0;
+}
+
+body{
+overflow:auto;
+}
+
+#page-content,
+.wms-page-content{
+height:100%;
+min-height:0;
+display:flex;
+flex-direction:column;
+}
+
+.free-page{
+flex:1;
+min-height:0;
+display:flex;
+flex-direction:column;
+background:#fff;
+overflow:hidden;
+}
+
+#page-topbar,
+#free-toolbar,
+#page-status{
+flex:0 0 auto;
+}
+
+.table-shell{
+overflow:auto !important;
+}
+
+#print-area.table-shell{
+flex:1 1 auto;
+min-height:0;
+min-width:0;
+height:0;
+overflow:auto !important;
+}
+
+#free-table{
+min-width:1250px;
+width:100%;
+}
+
+.free-table col:nth-child(1){width:44px;}
+.free-table col:nth-child(2){width:70px;}
+.free-table col:nth-child(3){width:120px;}
+.free-table col:nth-child(4){width:150px;}
+.free-table col:nth-child(5){width:120px;}
+.free-table col:nth-child(6){width:130px;}
+.free-table col:nth-child(7){width:170px;}
+.free-table col:nth-child(8){width:130px;}
+.free-table col:nth-child(9){width:120px;}
+.free-table col:nth-child(10){width:120px;}
+
+.status-btn{
+border:1px solid #cfd8e3;
+background:#fff;
+border-radius:999px;
+padding:4px 10px;
+font-size:12px;
+font-weight:600;
+cursor:pointer;
+line-height:1.2;
+}
+
+.status-wait{
+color:#111827;
+background:#fff;
+border-color:#cfd8e3;
+}
+
+.status-done{
+color:#0b74ff;
+background:#eef6ff;
+border-color:#9ecbff;
+}
+
+.status-btn:hover{
+filter:brightness(0.97);
+}
+</style>
+</head>
+
+<body>
+
+<div id="app-nav"></div>
+
+<div id="page-content">
+  <div class="free-page">
+
+    <div id="page-topbar"></div>
+    <div id="free-toolbar"></div>
+
+    <div id="print-area" class="table-shell">
+      <table class="wms-table free-table" id="free-table">
+        <colgroup>
+          <col>
+          <col>
+          <col>
+          <col>
+          <col>
+          <col>
+          <col>
+          <col>
+          <col>
+          <col>
+        </colgroup>
+
+        <thead>
+          <tr>
+            <th>
+              <div class="th-inner th-center">
+                <input type="checkbox" class="chk" id="chk-all">
+              </div>
+            </th>
+
+            <th data-col-key="no"><div class="th-inner"><span class="th-label">NO</span><span class="resize-handle"></span></div></th>
+            <th data-col-key="status"><div class="th-inner"><span class="th-label">구분</span><span class="resize-handle"></span></div></th>
+            <th data-col-key="invoice"><div class="th-inner"><span class="th-label">Invoice</span><span class="resize-handle"></span></div></th>
+            <th data-col-key="country"><div class="th-inner"><span class="th-label">국가</span><span class="resize-handle"></span></div></th>
+            <th data-col-key="ship_date"><div class="th-inner"><span class="th-label">출고일</span><span class="resize-handle"></span></div></th>
+            <th data-col-key="location"><div class="th-inner"><span class="th-label">상차위치</span><span class="resize-handle"></span></div></th>
+            <th data-col-key="container"><div class="th-inner"><span class="th-label">컨테이너</span><span class="resize-handle"></span></div></th>
+            <th data-col-key="user_name"><div class="th-inner"><span class="th-label">사용자</span><span class="resize-handle"></span></div></th>
+            <th data-col-key="worker_name"><div class="th-inner"><span class="th-label">작업자</span><span class="resize-handle"></span></div></th>
+          </tr>
+        </thead>
+
+        <tbody id="free-tbody"></tbody>
+      </table>
+    </div>
+
+    <div id="page-status" class="status-text"></div>
+
+  </div>
+</div>
+
+<div id="modal-root"></div>
+
+<script type="module" src="/assets/js/pages/issues/expiry_free.js?v=20260426_05"></script>
+
+</body>
+</html>

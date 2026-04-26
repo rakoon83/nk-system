@@ -5,6 +5,7 @@ import { createToolbar } from "/assets/js/shared/toolbar.js";
 import { createTableManager, compareTableValue } from "/assets/js/shared/table.js";
 import { createModal } from "/assets/js/shared/modal.js";
 import { downloadExcelFile } from "/assets/js/shared/excel.js";
+import { refreshInvoiceProgress } from "/assets/js/shared/invoice_progress_update.js";
 
 checkAuth();
 preparePageContent("app-nav", "page-content");
@@ -17,6 +18,9 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const TABLE_NAME = "worklog_scan";
 const LOG_TABLE = "worklog_scan_log";
 const DELETED_TABLE = "worklog_scan_deleted_log";
+
+const SCAN_IN_LOG_TABLE = "scan_in_log";
+
 const SAP_DOC_TABLE = "sap_doc";
 const SAP_ITEM_TABLE = "sap_item";
 const BARCODE_TABLE = "barcode_master";
@@ -37,6 +41,7 @@ const scanStatus = document.getElementById("scanStatus");
 
 let editId = "";
 let allRows = [];
+let scanInLogRows = [];
 let filteredRowsCache = [];
 let renderedCount = 0;
 let isAppending = false;
@@ -82,12 +87,12 @@ const tableManager = createTableManager({
   searchInputId: "toolbar-search-input",
   configButtonId: "table-config-btn",
   configPanelId: "table-config-panel",
-  storageKey: "worklog_scan_table_columns_v10",
+  storageKey: "worklog_scan_table_columns_v11",
   defaultSortKey: "scan_time",
   defaultSortDir: "desc",
   columns: [
     { key: "list_no", label: "NO", width: 70, visible: true },
-    { key: "scan_type", label: "입고검수", width: 90, visible: true },
+    { key: "scan_type", label: "입고검수", width: 120, visible: true },
     { key: "invoice", label: "인보이스", width: 150, visible: true },
     { key: "ship_date", label: "출고일", width: 110, visible: true },
     { key: "country", label: "국가", width: 90, visible: true },
@@ -106,7 +111,7 @@ const tableManager = createTableManager({
     { key: "outer_box_qty", label: "외박스", width: 80, visible: true },
     { key: "total_qty", label: "합계", width: 90, visible: true },
     { key: "work_type", label: "구분", width: 90, visible: true },
-    { key: "check_status", label: "검수", width: 120, visible: true },
+    { key: "check_status", label: "검수", width: 140, visible: true },
     { key: "scan_time", label: "작업시간", width: 160, visible: true },
     { key: "user_name", label: "작업자", width: 140, visible: true }
   ],
@@ -187,15 +192,14 @@ function bindEvents() {
   });
 
   document.getElementById("invoiceSearchInput")?.addEventListener("keydown", (e) => {
-  if (e.key !== "Enter") return;
-  invoiceFilter = clean(e.target.value);
-  renderTable(true);
-});
+    if (e.key !== "Enter") return;
+    invoiceFilter = clean(e.target.value);
+    renderTable(true);
+  });
 
-
-document.getElementById("btnScanRun")?.addEventListener("click", () => {
-  handleScan();
-});
+  document.getElementById("btnScanRun")?.addEventListener("click", () => {
+    handleScan();
+  });
 
   document.getElementById("expiryBody")?.addEventListener("change", async (e) => {
     const input = e.target;
@@ -373,18 +377,18 @@ async function handleScan() {
       return;
     }
 
+    await refreshInvoiceProgress(currentInvoice);
+
     renderExpirySummary(data || scanRows);
 
     const logs = (data || scanRows).map((row, index) => {
-    const copy = { ...row };
-
+      const copy = { ...row };
       copy.worklog_id = data?.[index]?.id || null;
-
       delete copy.id;
+      delete copy.created_at;
       delete copy.updated_at;
-
       return copy;
-     });
+    });
 
     const { error: logError } = await supabaseClient
       .from(LOG_TABLE)
@@ -418,13 +422,19 @@ async function findScanItems(keyword) {
   const boxSet = new Set();
 
   barcodeRows.forEach(row => {
-    if (clean(row.material_no)) materialSet.add(clean(row.material_no));
-    if (clean(row.box_no)) boxSet.add(clean(row.box_no).toUpperCase());
+    const materialNo = clean(row.material_no);
+    const boxNo = clean(row.box_no).toUpperCase();
+
+    if (materialNo) materialSet.add(materialNo);
+    if (boxNo) boxSet.add(boxNo);
   });
 
   currentItemRows.forEach(row => {
-    if (clean(row.material_no) === key) materialSet.add(clean(row.material_no));
-    if (clean(row.box_no).toUpperCase() === keyUpper) boxSet.add(clean(row.box_no).toUpperCase());
+    const materialNo = clean(row.material_no);
+    const boxNo = clean(row.box_no).toUpperCase();
+
+    if (materialNo.toUpperCase() === keyUpper) materialSet.add(materialNo);
+    if (boxNo === keyUpper) boxSet.add(boxNo);
   });
 
   if (!materialSet.size && !boxSet.size) {
@@ -439,7 +449,7 @@ async function findScanItems(keyword) {
   if (!result.length) {
     result = currentItemRows
       .filter(row =>
-        materialSet.has(clean(row.material_no)) ||
+        [...materialSet].some(v => v.toUpperCase() === clean(row.material_no).toUpperCase()) ||
         boxSet.has(clean(row.box_no).toUpperCase())
       )
       .map(row => mergeItem(row, barcodeRows));
@@ -456,52 +466,41 @@ async function fetchBarcodeRows(key, keyUpper) {
   const { data } = await supabaseClient
     .from(BARCODE_TABLE)
     .select("*")
-    .or(`barcode.eq.${key},material_no.eq.${key},box_no.eq.${key}`)
-    .limit(100);
+    .limit(5000);
 
   const rows = Array.isArray(data) ? data : [];
 
   return rows.filter(row =>
-    clean(row.barcode) === key ||
-    clean(row.material_no) === key ||
+    clean(row.barcode).toUpperCase() === keyUpper ||
+    clean(row.material_no).toUpperCase() === keyUpper ||
     clean(row.box_no).toUpperCase() === keyUpper
   );
 }
 
 async function fetchAttributeRows(materialNos, boxNos, keyUpper) {
-  let rows = [];
+  const { data, error } = await supabaseClient
+    .from(ATTR_TABLE)
+    .select("*")
+    .eq("invoice", currentInvoice)
+    .limit(5000);
 
-  for (const materialNo of materialNos) {
-    if (!materialNo) continue;
-
-    const { data } = await supabaseClient
-      .from(ATTR_TABLE)
-      .select("*")
-      .eq("invoice", currentInvoice)
-      .eq("material_no", materialNo)
-      .limit(3000);
-
-    rows = rows.concat(Array.isArray(data) ? data : []);
+  if (error) {
+    console.error(error);
+    return [];
   }
 
-  if (!rows.length) {
-    const { data: invoiceRows } = await supabaseClient
-      .from(ATTR_TABLE)
-      .select("*")
-      .eq("invoice", currentInvoice)
-      .limit(3000);
+  const rows = Array.isArray(data) ? data : [];
 
-    const allInvoiceRows = Array.isArray(invoiceRows) ? invoiceRows : [];
+  return dedupeRawRows(
+    rows.filter(row => {
+      const mat = clean(row.material_no);
+      const box = clean(row.box_no).toUpperCase();
 
-    rows = rows.concat(
-      allInvoiceRows.filter(row =>
-        boxNos.includes(clean(row.box_no).toUpperCase()) ||
-        clean(row.box_no).toUpperCase() === keyUpper
-      )
-    );
-  }
-
-  return dedupeRawRows(rows);
+      return materialNos.includes(mat)
+        || boxNos.includes(box)
+        || box === keyUpper;
+    })
+  );
 }
 
 function mergeItem(baseRow, barcodeRows) {
@@ -523,26 +522,33 @@ function mergeItem(baseRow, barcodeRows) {
     ship_date: currentSapDoc?.ship_date || sapItem?.ship_date || "",
     country: currentSapDoc?.country || sapItem?.country || "",
     location: currentLocation,
+
     material_no: materialNo || clean(sapItem?.material_no) || clean(barcode?.material_no),
     box_no: boxNo || clean(sapItem?.box_no) || clean(barcode?.box_no),
     material_name: clean(baseRow.material_name || sapItem?.material_name || barcode?.material_name),
-    mfg_date: clean(baseRow.mfg_date || baseRow.manufacture_date || barcode?.mfg_date || barcode?.manufacture_date),
-    exp_date: clean(baseRow.exp_date || baseRow.expiry_date || barcode?.exp_date || barcode?.expiry_date),
+
+    
+    mfg_date: clean(baseRow.mfg_date || baseRow.manufacture_date),
+    exp_date: clean(baseRow.exp_date || baseRow.expiry_date),
+
     outbound_qty: toInt(sapItem?.outbound_qty),
     inbound_qty: toInt(baseRow.inbound_qty || baseRow.inbound || baseRow.qty || baseRow.total_qty) || 1,
+
     product_qty: toInt(currentSapDoc?.product_qty),
     outer_box_qty: toInt(currentSapDoc?.outer_box_qty),
     total_qty: toInt(currentSapDoc?.total_qty),
+
     note: clean(baseRow.note || sapItem?.note)
   };
 }
+
 function makeScanRows(items) {
   if (!items || items.length === 0) return [];
 
   const totalInbound = items.reduce((sum, item) => sum + toInt(item.inbound_qty), 0);
   const outboundQty = toInt(items[0]?.outbound_qty ?? 0);
   const comparison = Math.max(0, totalInbound - outboundQty);
-  const checkStatus = comparison === 0 ? "검수완료" : "부분검수";
+  const checkStatus = comparison === 0 ? "작업검수완료" : "부분작업검수";
 
   return items.map(item => ({
     list_no: "",
@@ -647,12 +653,45 @@ async function loadRows() {
 
   try {
     allRows = await fetchRowsByFilter();
+    await loadScanInLogRows();
     updateSummary();
     renderTable(true);
   } catch (error) {
     console.error(error);
     tableManager.setStatus("데이터 조회 실패");
   }
+}
+
+async function loadScanInLogRows() {
+  const invoices = [...new Set(allRows.map(row => clean(row.invoice)).filter(Boolean))];
+
+  scanInLogRows = [];
+
+  for (const invoice of invoices) {
+    const { data, error } = await supabaseClient
+      .from(SCAN_IN_LOG_TABLE)
+      .select("*")
+      .eq("invoice", invoice)
+      .limit(5000);
+
+    if (!error && Array.isArray(data)) {
+      scanInLogRows = scanInLogRows.concat(data);
+    }
+  }
+}
+
+function getScanInStatus(row) {
+  if (!clean(row.ship_date) || !clean(row.country)) {
+    return "품목확인";
+  }
+
+  const found = scanInLogRows.some(log => {
+    return clean(log.invoice) === clean(row.invoice)
+      && clean(log.material_no) === clean(row.material_no)
+      && clean(log.box_no).toUpperCase() === clean(row.box_no).toUpperCase();
+  });
+
+  return found ? "입고검수완료" : "미검수";
 }
 
 async function fetchRowsByFilter() {
@@ -669,10 +708,11 @@ async function fetchRowsByFilter() {
       .range(from, to);
 
     if (filterMode === "today") {
-      const today = todayText();
+      const { startUtc, endUtc } = getKstDayRangeUtc(todayText());
+
       query = query
-        .gte("created_at", `${today}T00:00:00`)
-        .lt("created_at", `${todayNextText()}T00:00:00`);
+       .gte("created_at", startUtc)
+       .lt("created_at", endUtc);
     }
 
     if (filterMode === "date") {
@@ -804,7 +844,11 @@ function appendNextRows(force = false) {
 
 function renderCell(key, row, rowIndex = 0) {
   if (key === "list_no") return `<td data-col-key="list_no" class="mono-num">${rowIndex + 1}</td>`;
-  if (key === "scan_type") return `<td data-col-key="scan_type">${esc(row.scan_type)}</td>`;
+
+  if (key === "scan_type") {
+    return `<td data-col-key="scan_type">${renderScanInStatus(getScanInStatus(row))}</td>`;
+  }
+
   if (key === "invoice") return `<td data-col-key="invoice" class="mono-num">${esc(row.invoice)}</td>`;
   if (key === "ship_date") return `<td data-col-key="ship_date" class="mono-num">${esc(row.ship_date)}</td>`;
   if (key === "country") return `<td data-col-key="country">${esc(row.country)}</td>`;
@@ -826,7 +870,22 @@ function renderCell(key, row, rowIndex = 0) {
   if (key === "check_status") return `<td data-col-key="check_status">${renderCheck(row.check_status)}</td>`;
   if (key === "scan_time") return `<td data-col-key="scan_time" class="mono-num">${esc(formatDateTime(row.scan_time || row.created_at))}</td>`;
   if (key === "user_name") return `<td data-col-key="user_name">${esc(row.user_name)}</td>`;
+
   return "";
+}
+
+function renderScanInStatus(value) {
+  const v = clean(value);
+
+  if (v === "입고검수완료") {
+    return `<span class="badge badge-done">입고검수완료</span>`;
+  }
+
+  if (v === "품목확인") {
+    return `<span class="badge badge-danger">품목확인</span>`;
+  }
+
+  return `<span class="badge badge-wait">미검수</span>`;
 }
 
 function renderWorkType(value) {
@@ -839,9 +898,16 @@ function renderWorkType(value) {
 
 function renderCheck(value) {
   const v = clean(value);
-  if (v === "검수완료") return `<span class="badge badge-done">검수완료</span>`;
-  if (v === "부분검수") return `<span class="badge badge-part">부분검수</span>`;
-  return `<span class="badge badge-wait">대기</span>`;
+
+  if (v === "작업검수완료" || v === "검수완료") {
+    return `<span class="badge badge-done">작업검수완료</span>`;
+  }
+
+  if (v === "부분작업검수" || v === "부분검수") {
+    return `<span class="badge badge-part">부분작업검수</span>`;
+  }
+
+  return `<span class="badge badge-wait">미작업</span>`;
 }
 
 function openAddModal() {
@@ -947,7 +1013,7 @@ async function deleteSelectedRows() {
 function downloadExcel() {
   const rows = filteredRowsCache.map((row, index) => ({
     NO: index + 1,
-    입고검수: row.scan_type,
+    입고검수: getScanInStatus(row),
     인보이스: row.invoice,
     출고일: row.ship_date,
     국가: row.country,
@@ -1051,7 +1117,7 @@ function getFormValues() {
 
   const outboundQty = toInt(form.outbound_qty.value);
   const inboundQty = toInt(form.inbound_qty.value);
-  const comparison = inboundQty - outboundQty;
+  const comparison = Math.max(0, inboundQty - outboundQty);
 
   return {
     list_no: "",
@@ -1074,7 +1140,7 @@ function getFormValues() {
     outer_box_qty: 0,
     total_qty: 0,
     work_type: form.work_type.value,
-    check_status: comparison === 0 ? "검수완료" : "부분검수",
+    check_status: comparison === 0 ? "작업검수완료" : "부분작업검수",
     scan_time: new Date().toISOString()
   };
 }
@@ -1195,6 +1261,18 @@ function setText(id, value) {
 function clean(value) {
   return String(value ?? "").trim();
 }
+
+function getKstDayRangeUtc(dateText) {
+  const start = new Date(`${dateText}T00:00:00+09:00`);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 1);
+
+  return {
+    startUtc: start.toISOString(),
+    endUtc: end.toISOString()
+  };
+}
+
 
 function toInt(value) {
   const n = Number(String(value ?? "").replaceAll(",", "").replace(/[^\d.-]/g, ""));

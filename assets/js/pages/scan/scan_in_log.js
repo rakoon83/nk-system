@@ -6,6 +6,7 @@ import { createTableManager, compareTableValue } from "/assets/js/shared/table.j
 import { openConfirm } from "/assets/js/shared/modal.js";
 import { downloadExcelFile } from "/assets/js/shared/excel.js";
 
+
 checkAuth();
 preparePageContent("app-nav", "page-content");
 

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>인보이스 진행현황</title>
+
+  <link rel="icon" type="image/png" href="/assets/images/logo.png?v=1">
+
+  <link rel="stylesheet" href="/assets/css/font.css">
+  <link rel="stylesheet" href="/assets/css/common.css">
+  <link rel="stylesheet" href="/assets/css/nav.css?v=20260422">
+  <link rel="stylesheet" href="/assets/css/topbar.css">
+  <link rel="stylesheet" href="/assets/css/toolbar.css">
+  <link rel="stylesheet" href="/assets/css/table.css">
+  <link rel="stylesheet" href="/assets/css/modal.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    html,body{height:100%;margin:0;}
+    body{overflow:auto;}
+
+    #page-content,.wms-page-content{
+      height:100%;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .invoice-progress-page{
+      flex:1;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+      background:#fff;
+      overflow:hidden;
+    }
+
+    #page-topbar,#invoice-progress-toolbar,#page-status{flex:0 0 auto;}
+
+    #print-area.table-shell{
+      flex:1 1 auto;
+      min-height:0;
+      min-width:0;
+      height:0;
+      overflow:auto !important;
+    }
+
+    #invoice-progress-table{
+      min-width:1450px;
+      width:100%;
+    }
+
+    .invoice-progress-table col:nth-child(1){width:44px;}
+    .invoice-progress-table col:nth-child(2){width:60px;}
+    .invoice-progress-table col:nth-child(3){width:160px;}
+    .invoice-progress-table col:nth-child(4){width:120px;}
+    .invoice-progress-table col:nth-child(5){width:100px;}
+    .invoice-progress-table col:nth-child(6){width:100px;}
+    .invoice-progress-table col:nth-child(7){width:100px;}
+    .invoice-progress-table col:nth-child(8){width:150px;}
+    .invoice-progress-table col:nth-child(9){width:140px;}
+    .invoice-progress-table col:nth-child(10){width:140px;}
+    .invoice-progress-table col:nth-child(11){width:140px;}
+    .invoice-progress-table col:nth-child(12){width:140px;}
+    .invoice-progress-table col:nth-child(13){width:110px;}
+
+    .progress-badge{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:74px;
+      height:28px;
+      padding:0 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:700;
+      border:1px solid #cbd5e1;
+      background:#f8fafc;
+      white-space:nowrap;
+    }
+
+    .progress-none{background:#f1f5f9;color:#64748b;}
+    .progress-part{background:#fef9c3;color:#a16207;border-color:#fde68a;}
+    .progress-done{background:#dcfce7;color:#15803d;border-color:#86efac;}
+    .progress-check{background:#fee2e2;color:#b91c1c;border-color:#fca5a5;}
+
+    .sub-rate{
+      display:block;
+      margin-top:3px;
+      font-size:11px;
+      font-weight:500;
+      color:#64748b;
+    }
+
+    @media (max-width:1024px){
+      html,body{height:auto;min-height:100%;}
+      #page-content,.wms-page-content{height:auto;min-height:100vh;}
+      .invoice-progress-page{height:auto;min-height:100vh;}
+      #print-area.table-shell{
+        height:auto !important;
+        min-height:520px;
+        flex:0 0 auto;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app-nav"></div>
+
+  <div id="page-content">
+    <div class="invoice-progress-page">
+      <div id="page-topbar"></div>
+      <div id="invoice-progress-toolbar"></div>
+
+      <div id="print-area" class="table-shell">
+        <table class="wms-table invoice-progress-table" id="invoice-progress-table">
+          <colgroup>
+            <col>
+            <col data-col-key="no">
+            <col data-col-key="invoice_display">
+            <col data-col-key="ship_date">
+            <col data-col-key="country">
+            <col data-col-key="outbound_qty">
+            <col data-col-key="type">
+            <col data-col-key="container">
+            <col data-col-key="scan_in_status">
+            <col data-col-key="repair_status">
+            <col data-col-key="scan_out_status">
+            <col data-col-key="load_status">
+            <col data-col-key="row_status">
+          </colgroup>
+
+          <thead>
+            <tr>
+              <th><div class="th-inner th-center"><input type="checkbox" class="chk" id="chk-all"></div></th>
+              <th data-col-key="no"><div class="th-inner"><span class="th-label">NO</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="invoice_display"><div class="th-inner"><span class="th-label">로케이션</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="ship_date"><div class="th-inner"><span class="th-label">출고일</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="country"><div class="th-inner"><span class="th-label">국가</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="outbound_qty"><div class="th-inner"><span class="th-label">출고</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="type"><div class="th-inner"><span class="th-label">유형</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="container"><div class="th-inner"><span class="th-label">컨테이너</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="scan_in_status"><div class="th-inner"><span class="th-label">입고검수</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="repair_status"><div class="th-inner"><span class="th-label">보수검수</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="scan_out_status"><div class="th-inner"><span class="th-label">출고검수</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="load_status"><div class="th-inner"><span class="th-label">상차검수</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="row_status"><div class="th-inner"><span class="th-label">구분</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+            </tr>
+          </thead>
+
+          <tbody id="invoice-progress-tbody"></tbody>
+        </table>
+      </div>
+
+      <div id="page-status" class="status-text no-print"></div>
+    </div>
+  </div>
+
+  <script type="module" src="/assets/js/pages/dashboard/invoice_progress.js?v=20260426_06"></script>
+</body>
+</html>

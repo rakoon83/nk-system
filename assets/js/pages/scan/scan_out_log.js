@@ -18,6 +18,7 @@ const SUPABASE_KEY = "sb_publishable_Hzk4cMVV-7hFDP_ehgqh_A_CFcQm-A1";
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const TABLE_NAME = "scan_out_log";
+const PROGRESS_TABLE = "invoice_progress_log";
 const FETCH_PAGE_SIZE = 1000;
 const RENDER_PAGE_SIZE = 500;
 
@@ -33,6 +34,9 @@ const rankList = document.getElementById("rank-list");
 const speedList = document.getElementById("speed-list");
 
 let allRows = [];
+let progressRows = [];
+let progressMap = new Map();
+
 let filteredRowsCache = [];
 let renderedCount = 0;
 let isAppending = false;
@@ -40,14 +44,14 @@ let isAppending = false;
 createTopbar({
   mountId: "page-topbar",
   title: "출고 검수 로그",
-  subtitle: "출고 검수 이력 / 사용자 순위 / 검수속도",
+  subtitle: "출고 검수 이력 / 입고검수 / 보수검수 / 사용자 순위",
   rightHtml: `<div class="wms-topbar-chip">DB<strong>SUPABASE</strong></div>`
 });
 
 const toolbar = createToolbar({
   mountId: "scan-log-toolbar",
   currentUserName,
-  searchPlaceholder: "Invoice / 국가 / 출고일 / 사용자 / 번호 / 검수 / 박스번호 / 코드 / 자재내역 / 바코드 검색",
+  searchPlaceholder: "Invoice / 입고검수 / 보수검수 / 국가 / 출고일 / 사용자 / 번호 / 출고검수 / 박스번호 / 코드 / 자재내역 / 바코드 검색",
   buttons: {
     add: false,
     paste: false,
@@ -70,17 +74,19 @@ const tableManager = createTableManager({
   searchInputId: "toolbar-search-input",
   configButtonId: "table-config-btn",
   configPanelId: "table-config-panel",
-  storageKey: "scan_out_log_table_columns_v1",
+  storageKey: "scan_out_log_table_columns_v2",
   defaultSortKey: "created_at",
   defaultSortDir: "desc",
   columns: [
     { key: "no", label: "NO", width: 70, visible: true },
     { key: "invoice", label: "Invoice", width: 150, visible: true },
+    { key: "scan_in_status", label: "입고검수", width: 120, visible: true },
+    { key: "repair_status", label: "보수검수", width: 120, visible: true },
     { key: "country", label: "국가", width: 100, visible: true },
     { key: "ship_date", label: "출고일", width: 130, visible: true },
     { key: "scan_user", label: "사용자", width: 130, visible: true },
     { key: "list_no", label: "번호", width: 90, visible: true },
-    { key: "scan_status", label: "검수", width: 140, visible: true },
+    { key: "scan_status", label: "출고검수", width: 140, visible: true },
     { key: "box_no", label: "박스번호", width: 160, visible: true },
     { key: "material_no", label: "코드", width: 150, visible: true },
     { key: "material_name", label: "자재내역", width: 320, visible: true },
@@ -92,6 +98,8 @@ const tableManager = createTableManager({
   sortMap: {
     no: 'thead th[data-col-key="no"] .th-inner',
     invoice: 'thead th[data-col-key="invoice"] .th-inner',
+    scan_in_status: 'thead th[data-col-key="scan_in_status"] .th-inner',
+    repair_status: 'thead th[data-col-key="repair_status"] .th-inner',
     country: 'thead th[data-col-key="country"] .th-inner',
     ship_date: 'thead th[data-col-key="ship_date"] .th-inner',
     scan_user: 'thead th[data-col-key="scan_user"] .th-inner',
@@ -160,7 +168,7 @@ function onTableScroll() {
   }
 }
 
-async function fetchAllRows() {
+async function fetchAllRows(tableName) {
   let from = 0;
   let merged = [];
 
@@ -168,7 +176,7 @@ async function fetchAllRows() {
     const to = from + FETCH_PAGE_SIZE - 1;
 
     const { data, error } = await supabaseClient
-      .from(TABLE_NAME)
+      .from(tableName)
       .select("*")
       .order("created_at", { ascending: false })
       .range(from, to);
@@ -189,13 +197,56 @@ async function loadRows() {
   tableManager.setStatus("불러오는 중...");
 
   try {
-    const data = await fetchAllRows();
-    allRows = Array.isArray(data) ? removeSameDuplicateLogs(data) : [];
+    const [logData, progressData] = await Promise.all([
+      fetchAllRows(TABLE_NAME),
+      fetchAllRows(PROGRESS_TABLE)
+    ]);
+
+    progressRows = Array.isArray(progressData) ? progressData : [];
+    buildProgressMap();
+
+    allRows = Array.isArray(logData)
+      ? removeSameDuplicateLogs(logData).map(row => attachProgressStatus(row))
+      : [];
+
     renderTable(true);
   } catch (error) {
     console.error(error);
     tableManager.setStatus("데이터 조회 실패");
   }
+}
+
+function buildProgressMap() {
+  progressMap = new Map();
+
+  progressRows.forEach(row => {
+    const invoice = clean(row.invoice);
+    if (!invoice) return;
+
+    if (!progressMap.has(invoice)) {
+      progressMap.set(invoice, row);
+    }
+  });
+}
+
+function attachProgressStatus(row) {
+  const progress = progressMap.get(clean(row.invoice)) || {};
+
+  return {
+    ...row,
+    scan_in_status: clean(
+      progress.scan_in_status ||
+      progress.in_scan_status ||
+      progress.inbound_scan_status ||
+      progress.inbound_status
+    ),
+    repair_status: clean(
+      progress.repair_status ||
+      progress.worklog_status ||
+      progress.repair_scan_status ||
+      progress.work_status
+    )
+  };
 }
 
 function removeSameDuplicateLogs(rows) {
@@ -226,6 +277,8 @@ function getFilteredRows() {
       return [
         row.id,
         row.invoice,
+        row.scan_in_status,
+        row.repair_status,
         row.country,
         row.ship_date,
         row.scan_user,
@@ -327,7 +380,7 @@ function renderTable(reset = false) {
   if (!filteredRowsCache.length) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="15" class="table-empty">데이터가 없습니다.</td>
+        <td colspan="17" class="table-empty">데이터가 없습니다.</td>
       </tr>
     `;
     tableManager.refreshAfterRender();
@@ -371,15 +424,22 @@ function appendNextRows(force = false) {
 function renderCell(key, row) {
   if (key === "no") return `<td data-col-key="no" class="mono-num">${esc(row.no)}</td>`;
   if (key === "invoice") return `<td data-col-key="invoice" class="mono-num">${esc(row.invoice)}</td>`;
+
+  if (key === "scan_in_status") {
+    return `<td data-col-key="scan_in_status">${renderStatusBadge(row.scan_in_status)}</td>`;
+  }
+
+  if (key === "repair_status") {
+    return `<td data-col-key="repair_status">${renderStatusBadge(row.repair_status)}</td>`;
+  }
+
   if (key === "country") return `<td data-col-key="country">${esc(row.country)}</td>`;
   if (key === "ship_date") return `<td data-col-key="ship_date" class="mono-num">${esc(row.ship_date)}</td>`;
   if (key === "scan_user") return `<td data-col-key="scan_user">${esc(row.scan_user)}</td>`;
   if (key === "list_no") return `<td data-col-key="list_no" class="mono-num">${esc(row.list_no)}</td>`;
 
   if (key === "scan_status") {
-    const status = clean(row.scan_status);
-    const cls = status.includes("출고") || status.includes("완료") ? "done" : "etc";
-    return `<td data-col-key="scan_status"><span class="status-badge ${cls}">${esc(status)}</span></td>`;
+    return `<td data-col-key="scan_status">${renderStatusBadge(row.scan_status)}</td>`;
   }
 
   if (key === "box_no") return `<td data-col-key="box_no" class="mono-num">${esc(row.box_no)}</td>`;
@@ -391,6 +451,22 @@ function renderCell(key, row) {
   if (key === "created_at") return `<td data-col-key="created_at" class="mono-num">${esc(formatDateTime(row.created_at))}</td>`;
 
   return "";
+}
+
+function renderStatusBadge(value) {
+  const status = clean(value);
+
+  if (!status) {
+    return `<span class="status-badge etc">-</span>`;
+  }
+
+  let cls = "etc";
+
+  if (status.includes("완료")) cls = "done";
+  else if (status.includes("부분")) cls = "part";
+  else if (status.includes("대기")) cls = "block";
+
+  return `<span class="status-badge ${cls}">${esc(status)}</span>`;
 }
 
 function getSelectedIds() {
@@ -457,11 +533,13 @@ function downloadExcel() {
   const rows = filteredRowsCache.map(row => ({
     NO: row.no,
     Invoice: row.invoice,
+    입고검수: row.scan_in_status,
+    보수검수: row.repair_status,
     국가: row.country,
     출고일: row.ship_date,
     사용자: row.scan_user,
     번호: row.list_no,
-    검수: row.scan_status,
+    출고검수: row.scan_status,
     박스번호: row.box_no,
     코드: row.material_no,
     자재내역: row.material_name,

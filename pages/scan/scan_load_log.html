@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>상차검수 로그</title>
+
+  <link rel="icon" type="image/png" href="/assets/images/logo.png?v=1">
+
+  <link rel="stylesheet" href="/assets/css/font.css">
+  <link rel="stylesheet" href="/assets/css/common.css">
+  <link rel="stylesheet" href="/assets/css/nav.css?v=20260422">
+  <link rel="stylesheet" href="/assets/css/topbar.css">
+  <link rel="stylesheet" href="/assets/css/table.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    html,body{height:100%;margin:0;}
+    body{overflow:auto;}
+
+    #page-content,.wms-page-content{
+      height:100%;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .scan-load-log-page{
+      flex:1;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+      background:#fff;
+      overflow:hidden;
+    }
+
+    #page-topbar,#page-status{flex:0 0 auto;}
+
+    .log-toolbar{
+      flex:0 0 auto;
+      display:flex;
+      gap:8px;
+      align-items:center;
+      padding:10px 12px;
+      border-bottom:1px solid #e5e7eb;
+      background:#fff;
+      flex-wrap:wrap;
+    }
+
+    .log-input{
+      height:38px;
+      border:1px solid #cbd5e1;
+      padding:0 10px;
+      font-size:14px;
+    }
+
+    #invoiceInput{width:220px;}
+    #keywordInput{width:260px;}
+
+    .log-btn{
+      height:38px;
+      padding:0 14px;
+      border:1px solid #cbd5e1;
+      background:#f8fafc;
+      font-weight:800;
+      cursor:pointer;
+    }
+
+    .log-btn.primary{
+      background:#2563eb;
+      border-color:#2563eb;
+      color:#fff;
+    }
+
+    .log-summary{
+      margin-left:auto;
+      font-size:13px;
+      font-weight:800;
+      color:#334155;
+    }
+
+    .table-shell{
+      flex:1 1 auto;
+      min-height:0;
+      min-width:0;
+      height:0;
+      overflow:auto !important;
+    }
+
+    #scan-load-log-table{
+      min-width:1550px;
+      width:100%;
+    }
+
+    .scan-load-log-table col:nth-child(1){width:70px;}
+    .scan-load-log-table col:nth-child(2){width:150px;}
+    .scan-load-log-table col:nth-child(3){width:120px;}
+    .scan-load-log-table col:nth-child(4){width:130px;}
+    .scan-load-log-table col:nth-child(5){width:140px;}
+    .scan-load-log-table col:nth-child(6){width:320px;}
+    .scan-load-log-table col:nth-child(7){width:140px;}
+    .scan-load-log-table col:nth-child(8){width:190px;}
+    .scan-load-log-table col:nth-child(9){width:120px;}
+    .scan-load-log-table col:nth-child(10){width:120px;}
+    .scan-load-log-table col:nth-child(11){width:120px;}
+    .scan-load-log-table col:nth-child(12){width:130px;}
+    .scan-load-log-table col:nth-child(13){width:180px;}
+
+    .scan-load-log-table th{
+      cursor:pointer;
+      user-select:none;
+    }
+
+    .sort-mark{
+      margin-left:4px;
+      color:#94a3b8;
+      font-size:12px;
+    }
+
+    .badge{
+      display:inline-flex;
+      height:24px;
+      padding:0 10px;
+      align-items:center;
+      justify-content:center;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:800;
+      white-space:nowrap;
+    }
+
+    .badge.ok{background:#bbf7d0;color:#15803d;}
+
+    @media (max-width:900px){
+      html,body{height:auto;min-height:100%;}
+      #page-content,.wms-page-content{height:auto;min-height:100vh;}
+      .scan-load-log-page{height:auto;min-height:100vh;}
+      .table-shell{height:auto;min-height:420px;}
+      .log-summary{margin-left:0;width:100%;}
+      #invoiceInput,#keywordInput{width:100%;}
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app-nav"></div>
+
+  <div id="page-content">
+    <div class="scan-load-log-page">
+      <div id="page-topbar"></div>
+
+      <div class="log-toolbar">
+        <input id="invoiceInput" class="log-input" type="text" placeholder="Invoice 검색" autocomplete="off">
+        <input id="keywordInput" class="log-input" type="text" placeholder="코드 / 박스 / 바코드 / 사용자" autocomplete="off">
+
+        <button id="btnSearch" class="log-btn primary" type="button">조회</button>
+        <button id="btnReset" class="log-btn" type="button">초기화</button>
+        <button id="btnDelete" class="log-btn" type="button">선택삭제</button>
+
+        <div id="logSummary" class="log-summary">0건</div>
+      </div>
+
+      <div class="table-shell">
+        <table class="wms-table scan-load-log-table" id="scan-load-log-table">
+          <colgroup>
+            <col><col><col><col><col><col><col><col><col><col><col><col><col>
+          </colgroup>
+
+          <thead>
+            <tr>
+              <th><input id="checkAll" type="checkbox"></th>
+              <th data-sort-key="invoice">Invoice <span class="sort-mark">↕</span></th>
+              <th data-sort-key="list_no">번호 <span class="sort-mark">↕</span></th>
+              <th data-sort-key="scan_status">상태 <span class="sort-mark">↕</span></th>
+              <th data-sort-key="box_no">박스번호 <span class="sort-mark">↕</span></th>
+              <th data-sort-key="material_name">자재내역 <span class="sort-mark">↕</span></th>
+              <th data-sort-key="material_no">코드 <span class="sort-mark">↕</span></th>
+              <th data-sort-key="barcode">바코드 <span class="sort-mark">↕</span></th>
+              <th data-sort-key="scan_user">사용자 <span class="sort-mark">↕</span></th>
+              <th data-sort-key="country">국가 <span class="sort-mark">↕</span></th>
+              <th data-sort-key="ship_date">출고일 <span class="sort-mark">↕</span></th>
+              <th data-sort-key="container">컨테이너 <span class="sort-mark">↕</span></th>
+              <th data-sort-key="created_at">등록일 <span class="sort-mark">↕</span></th>
+            </tr>
+          </thead>
+
+          <tbody id="scan-load-log-tbody">
+            <tr>
+              <td colspan="13" class="table-empty">조회된 로그가 없습니다.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div id="page-status" class="status-text no-print"></div>
+    </div>
+  </div>
+
+  <script type="module" src="/assets/js/pages/scan/scan_load_log.js?v=20260426_01"></script>
+</body>
+</html>

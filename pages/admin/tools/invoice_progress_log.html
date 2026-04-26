@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>인보이스 진행현황 로그</title>
+
+  <link rel="icon" type="image/png" href="/assets/images/logo.png?v=1">
+
+  <link rel="stylesheet" href="/assets/css/font.css">
+  <link rel="stylesheet" href="/assets/css/common.css">
+  <link rel="stylesheet" href="/assets/css/nav.css?v=20260422">
+  <link rel="stylesheet" href="/assets/css/topbar.css">
+  <link rel="stylesheet" href="/assets/css/toolbar.css">
+  <link rel="stylesheet" href="/assets/css/table.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    html,body{
+      height:100%;
+      margin:0;
+    }
+
+    body{
+      overflow:auto;
+      background:#f8fafc;
+    }
+
+    #page-content,
+    .wms-page-content{
+      height:100%;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+    }
+
+    .progress-log-page{
+      flex:1;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+      background:#f8fafc;
+      overflow:auto;
+    }
+
+    .log-wrap{
+      padding:18px;
+      display:grid;
+      gap:14px;
+    }
+
+    .log-card{
+      background:#fff;
+      border:1px solid #e5e7eb;
+      border-radius:16px;
+      padding:18px;
+      box-shadow:0 6px 18px rgba(15,23,42,.06);
+    }
+
+    .log-title{
+      font-size:18px;
+      font-weight:800;
+      color:#0f172a;
+      margin-bottom:6px;
+    }
+
+    .log-desc{
+      font-size:13px;
+      color:#64748b;
+      margin-bottom:16px;
+      line-height:1.5;
+    }
+
+    .log-actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-bottom:16px;
+    }
+
+    .log-btn{
+      height:38px;
+      padding:0 16px;
+      border-radius:10px;
+      border:1px solid #2563eb;
+      background:#2563eb;
+      color:#fff;
+      font-size:14px;
+      font-weight:700;
+      cursor:pointer;
+    }
+
+    .log-btn:disabled{
+      opacity:.55;
+      cursor:not-allowed;
+    }
+
+    .log-info-grid{
+      display:grid;
+      grid-template-columns:repeat(4, minmax(120px, 1fr));
+      gap:10px;
+    }
+
+    .log-info{
+      border:1px solid #e5e7eb;
+      border-radius:12px;
+      padding:12px;
+      background:#f8fafc;
+    }
+
+    .log-label{
+      font-size:12px;
+      color:#64748b;
+      margin-bottom:6px;
+    }
+
+    .log-value{
+      font-size:18px;
+      font-weight:800;
+      color:#0f172a;
+    }
+
+    .log-status{
+      padding:12px 18px;
+      font-size:13px;
+      color:#334155;
+    }
+
+    @media (max-width:900px){
+      .log-info-grid{
+        grid-template-columns:repeat(2, minmax(120px, 1fr));
+      }
+    }
+
+    @media (max-width:640px){
+      .log-wrap{
+        padding:12px;
+      }
+
+      .log-info-grid{
+        grid-template-columns:1fr;
+      }
+
+      .log-btn{
+        width:100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app-nav"></div>
+
+  <div id="page-content">
+    <div class="progress-log-page">
+      <div id="page-topbar"></div>
+
+      <div class="log-wrap">
+        <div class="log-card">
+          <div class="log-title">인보이스 진행현황 로그</div>
+          <div class="log-desc">
+            결과갱신을 누르면 SAP 문서, SAP 자재, 입고/보수/출고/상차 로그를 계산해서
+            <b>invoice_progress_log</b> 테이블에 저장합니다.
+          </div>
+
+          <div class="log-actions">
+            <button type="button" class="log-btn" id="btn-refresh-log">
+              결과갱신
+            </button>
+          </div>
+
+          <div class="log-info-grid">
+            <div class="log-info">
+              <div class="log-label">저장 건수</div>
+              <div class="log-value" id="log-count">0</div>
+            </div>
+
+            <div class="log-info">
+              <div class="log-label">정상</div>
+              <div class="log-value" id="log-normal">0</div>
+            </div>
+
+            <div class="log-info">
+              <div class="log-label">확인</div>
+              <div class="log-value" id="log-check">0</div>
+            </div>
+
+            <div class="log-info">
+              <div class="log-label">최근 저장</div>
+              <div class="log-value" id="log-updated">-</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="log-card">
+          <div class="log-title">처리 상태</div>
+          <div class="log-status" id="page-status">대기 중</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/assets/js/pages/admin/tools/invoice_progress_log.js?v=20260426_01"></script>
+</body>
+</html>

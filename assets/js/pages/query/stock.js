@@ -1,518 +1,405 @@
 import { checkAuth, getLoginUser } from "/assets/js/core/auth.js";
-import { renderNav, preparePageContent } from "/assets/js/core/nav.js?v=20260421";
+import { renderNav, preparePageContent } from "/assets/js/core/nav.js?v=20260422";
 import { createTopbar } from "/assets/js/shared/topbar.js";
 import { createToolbar } from "/assets/js/shared/toolbar.js";
-import { createTableManager, compareTableValue } from "/assets/js/shared/table.js";
-import { createModal, openConfirm } from "/assets/js/shared/modal.js";
 import { downloadExcelFile } from "/assets/js/shared/excel.js";
-import { loadStorageRows, saveStorageRows } from "/assets/js/shared/storage.js";
 
 checkAuth();
 preparePageContent("app-nav", "page-content");
+renderNav({ mountId: "app-nav" });
 
-renderNav({
-  mountId: "app-nav"
-});
+const SUPABASE_URL = "https://pdadmygpowrhrxxwawak.supabase.co";
+const SUPABASE_KEY = "sb_publishable_Hzk4cMVV-7hFDP_ehgqh_A_CFcQm-A1";
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-const STORAGE_KEY = "wms_stock_test_rows_v9";
+const WMS_TABLE = "wms_attribute_b";
+const SAP_DOC_TABLE = "sap_doc";
+const DEFECT_TABLE = "defect_upload";
+
+const FETCH_PAGE_SIZE = 1000;
 
 const loginUser = getLoginUser();
 const currentUserName = loginUser?.name || loginUser?.id || "-";
 
+const keywordInput = document.getElementById("keywordInput");
+const btnSearchStock = document.getElementById("btnSearchStock");
 const tbody = document.getElementById("stock-tbody");
+const filterButtons = document.querySelectorAll(".stock-filter-btn");
 
-let editId = "";
-
-const defaultRows = [
-  { id: uid(), no: 1, country: "KR", code: "100001", box: "BOX-001", name: "테스트 자재 A", note: "", qty: 120, writer: "남경관리자" },
-  { id: uid(), no: 2, country: "US", code: "100002", box: "BOX-002", name: "테스트 자재 B", note: "샘플", qty: 80, writer: "남경관리자" },
-  { id: uid(), no: 3, country: "JP", code: "100003", box: "BOX-003", name: "테스트 자재 C", note: "", qty: 45, writer: "남경관리자" }
-];
+let allRows = [];
+let viewRows = [];
+let activeFilter = "";
 
 createTopbar({
   mountId: "page-topbar",
-  title: "재고 조회",
-  subtitle: "창고별 재고 / 테스트 화면",
-  rightHtml: `<div class="wms-topbar-chip">모드<strong>TEST</strong></div>`
+  title: "재고조회",
+  subtitle: "인보이스 / 코드 / 박스번호 기준 재고 확인",
+  rightHtml: `<div class="wms-topbar-chip">DB<strong>SUPABASE</strong></div>`
 });
 
 const toolbar = createToolbar({
   mountId: "stock-toolbar",
   currentUserName,
-  searchPlaceholder: "검색",
+  searchPlaceholder: "현재 결과 내 검색",
   buttons: {
-    add: true,
-    paste: true,
-    edit: true,
-    remove: true,
-    sum: true,
+    add: false,
+    paste: false,
+    edit: false,
+    remove: false,
+    sum: false,
     download: true,
     print: true,
-    config: true,
+    config: false,
     search: true,
     currentUser: true
   }
 });
 
-const tableManager = createTableManager({
-  tableId: "stock-table",
-  tbodyId: "stock-tbody",
-  checkboxAllId: "chk-all",
-  statusId: "page-status",
-  searchInputId: "toolbar-search-input",
-  configButtonId: "table-config-btn",
-  configPanelId: "table-config-panel",
-  storageKey: "stock_table_columns",
-  defaultSortKey: "no",
-  defaultSortDir: "asc",
-  columns: [
-    { key: "no", label: "NO", width: 80, visible: true },
-    { key: "country", label: "국가", width: 120, visible: true },
-    { key: "code", label: "코드", width: 140, visible: true },
-    { key: "box", label: "박스번호", width: 180, visible: true },
-    { key: "name", label: "자재내역", width: 220, visible: true },
-    { key: "note", label: "비고", width: 180, visible: true },
-    { key: "qty", label: "재고", width: 100, visible: true },
-    { key: "writer", label: "등록자", width: 130, visible: true }
-  ],
-  sortMap: {
-    no: 'thead th[data-col-key="no"] .th-inner',
-    country: 'thead th[data-col-key="country"] .th-inner',
-    code: 'thead th[data-col-key="code"] .th-inner',
-    box: 'thead th[data-col-key="box"] .th-inner',
-    name: 'thead th[data-col-key="name"] .th-inner',
-    note: 'thead th[data-col-key="note"] .th-inner',
-    qty: 'thead th[data-col-key="qty"] .th-inner',
-    writer: 'thead th[data-col-key="writer"] .th-inner'
-  },
-  onSortChange: () => renderTable(),
-  onSelectionChange: (ids) => {
-    toolbar.setDisabled("edit", ids.length !== 1);
-    toolbar.setDisabled("remove", ids.length < 1);
-  },
-  onColumnChange: () => {
-    renderTable();
-  }
-});
-
-const formModal = createModal({
-  mountId: "modal-root",
-  modalId: "stock-form-modal",
-  title: "개별 등록",
-  bodyHtml: getFormModalHtml(),
-  confirmText: "저장",
-  cancelText: "닫기"
-});
-
-const pasteModal = createModal({
-  mountId: "modal-root",
-  modalId: "stock-paste-modal",
-  title: "대량 등록",
-  bodyHtml: getPasteModalHtml(),
-  confirmText: "등록",
-  cancelText: "닫기"
-});
-
 init();
 
 function init() {
-  const currentRows = loadStorageRows(STORAGE_KEY, []);
-  if (!currentRows.length) {
-    saveRows(defaultRows);
-  }
+  btnSearchStock?.addEventListener("click", searchStock);
 
-  bindEvents();
-  tableManager.init();
+  keywordInput?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") searchStock();
+  });
+
+  filterButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      activeFilter = btn.dataset.filter || "";
+
+      filterButtons.forEach(b => b.classList.remove("is-active"));
+      btn.classList.add("is-active");
+
+      searchByFilter(activeFilter);
+    });
+  });
+
+  toolbar.on("search", (keyword) => {
+    renderFiltered(keyword);
+  });
+
+  toolbar.on("download", downloadExcel);
+  toolbar.on("print", printPage);
+}
+
+async function searchStock() {
+  const keyword = clean(keywordInput.value);
+  if (!keyword) return;
+
+  activeFilter = "";
+  filterButtons.forEach(b => b.classList.remove("is-active"));
+
+  const key = keyword.toLowerCase();
+
+  const [wmsRows, docRows, defectRows] = await Promise.all([
+    fetchAllRows(WMS_TABLE),
+    fetchAllRows(SAP_DOC_TABLE),
+    fetchAllRows(DEFECT_TABLE)
+  ]);
+
+  const docMap = makeMap(docRows, "invoice");
+  const locationMap = makeLocationMap(defectRows);
+
+  allRows = wmsRows
+    .filter(row => {
+      const invoice = clean(row.invoice).toLowerCase();
+      const materialNo = clean(row.material_no).toLowerCase();
+      const boxNo = clean(row.box_no).toLowerCase();
+
+      return (
+        invoice.includes(key) ||
+        materialNo.includes(key) ||
+        boxNo.includes(key)
+      );
+    })
+    .map(row => makeStockRow(row, docMap, locationMap));
+
+  viewRows = allRows;
   renderTable();
 }
 
-function bindEvents() {
-  toolbar.on("add", openAddModal);
-  toolbar.on("paste", openPasteModal);
-  toolbar.on("edit", editSelectedRow);
-  toolbar.on("remove", deleteSelectedRows);
-  toolbar.on("download", downloadExcel);
-  toolbar.on("print", () => window.print());
-  toolbar.on("sum", sumSelectedQty);
+async function searchByFilter(filterText) {
+  const text = clean(filterText);
+  if (!text) return;
 
-  toolbar.searchInput?.addEventListener("input", renderTable);
+  keywordInput.value = "";
 
-  formModal.onConfirm(() => saveFormRow());
-  pasteModal.onConfirm(() => savePasteRows());
+  const [wmsRows, docRows, defectRows] = await Promise.all([
+    fetchAllRows(WMS_TABLE),
+    fetchAllRows(SAP_DOC_TABLE),
+    fetchAllRows(DEFECT_TABLE)
+  ]);
+
+  const docMap = makeMap(docRows, "invoice");
+  const locationMap = makeLocationMap(defectRows);
+
+  allRows = wmsRows
+    .filter(row => {
+      const invoice = clean(row.invoice);
+      return invoice.includes(text);
+    })
+    .map(row => makeStockRow(row, docMap, locationMap));
+
+  viewRows = allRows;
+  renderTable();
 }
 
-function getRows() {
-  return loadStorageRows(STORAGE_KEY, defaultRows);
+function makeStockRow(row, docMap, locationMap) {
+  const invoice = clean(row.invoice);
+  const doc = docMap.get(invoice);
+
+  return {
+    invoice,
+    country: clean(doc?.country),
+    ship_date: clean(doc?.ship_date),
+    location: clean(locationMap.get(invoice)),
+    material_no: clean(row.material_no),
+    box_no: clean(row.box_no),
+    material_name: clean(row.material_name),
+    inbound_qty: toNumber(
+      row.inbound_qty ||
+      row.qty ||
+      row.quantity ||
+      row.total_qty ||
+      row.pack_qty
+    ),
+    mfg_date: clean(row.mfg_date),
+    exp_date: clean(row.exp_date),
+    note: clean(row.note)
+  };
 }
 
-function saveRows(rows) {
-  saveStorageRows(STORAGE_KEY, rows);
-}
+async function fetchAllRows(tableName) {
+  let from = 0;
+  let merged = [];
 
-function getFilteredRows() {
-  const keyword = toolbar.getSearchKeyword();
-  let rows = getRows();
+  while (true) {
+    const to = from + FETCH_PAGE_SIZE - 1;
 
-  if (keyword) {
-    rows = rows.filter((row) => {
-      return [
-        row.no,
-        row.country,
-        row.code,
-        row.box,
-        row.name,
-        row.note,
-        row.qty,
-        row.writer
-      ].some(v => String(v ?? "").toLowerCase().includes(keyword));
-    });
+    const { data, error } = await supabaseClient
+      .from(tableName)
+      .select("*")
+      .range(from, to);
+
+    if (error) {
+      console.error(error);
+      alert(`${tableName} 조회 오류`);
+      return [];
+    }
+
+    const rows = Array.isArray(data) ? data : [];
+    merged = merged.concat(rows);
+
+    if (rows.length < FETCH_PAGE_SIZE) break;
+    from += FETCH_PAGE_SIZE;
   }
 
-  const { sortKey, sortDir } = tableManager.getSortState();
-  rows = [...rows].sort((a, b) => compareTableValue(a[sortKey], b[sortKey], sortDir));
+  return merged;
+}
 
-  return rows;
+function makeMap(rows, keyName) {
+  const map = new Map();
+
+  rows.forEach(row => {
+    const key = clean(row[keyName]);
+    if (key && !map.has(key)) map.set(key, row);
+  });
+
+  return map;
+}
+
+function makeLocationMap(rows) {
+  const map = new Map();
+
+  rows.forEach(row => {
+    const invoice = clean(row.invoice);
+    const location = clean(row.location);
+
+    if (invoice && location && !map.has(invoice)) {
+      map.set(invoice, location);
+    }
+  });
+
+  return map;
+}
+
+function renderFiltered(keyword) {
+  const key = clean(keyword).toLowerCase();
+
+  if (!key) {
+    viewRows = allRows;
+    renderTable();
+    return;
+  }
+
+  viewRows = allRows.filter(row => {
+    return Object.values(row).some(v =>
+      clean(v).toLowerCase().includes(key)
+    );
+  });
+
+  renderTable();
 }
 
 function renderTable() {
-  const rows = getFilteredRows();
-  const visibleColumns = tableManager.getColumnState().filter(col => col.visible);
-
-  tbody.innerHTML = rows.map(row => `
-    <tr data-row-id="${row.id}">
-      <td><input type="checkbox" class="chk row-chk" data-id="${row.id}"></td>
-      ${visibleColumns.map(col => renderCell(col.key, row)).join("")}
-    </tr>
-  `).join("");
-
-  tableManager.refreshAfterRender();
-  tableManager.setStatus(`${num(rows.length)}건`);
-}
-
-function renderCell(key, row) {
-  if (key === "no") return `<td data-col-key="no" class="mono-num">${esc(row.no)}</td>`;
-  if (key === "country") return `<td data-col-key="country">${esc(row.country)}</td>`;
-  if (key === "code") return `<td data-col-key="code" class="mono-num">${esc(row.code)}</td>`;
-  if (key === "box") return `<td data-col-key="box">${esc(row.box)}</td>`;
-  if (key === "name") return `<td data-col-key="name">${esc(row.name)}</td>`;
-  if (key === "note") return `<td data-col-key="note">${esc(row.note)}</td>`;
-  if (key === "qty") return `<td data-col-key="qty" class="mono-num">${num(row.qty)}</td>`;
-  if (key === "writer") return `<td data-col-key="writer">${esc(row.writer || "")}</td>`;
-  return "";
-}
-
-function getSelectedIds() {
-  return tableManager.getSelectedIds();
-}
-
-function openAddModal() {
-  editId = "";
-  formModal.setTitle("개별 등록");
-  setFormValues({
-    country: "",
-    code: "",
-    box: "",
-    name: "",
-    note: "",
-    qty: ""
-  });
-  formModal.open();
-}
-
-function openPasteModal() {
-  getPasteTextarea().value = "";
-  pasteModal.open();
-  setTimeout(() => getPasteTextarea().focus(), 30);
-}
-
-function editSelectedRow() {
-  const ids = getSelectedIds();
-
-  if (ids.length !== 1) {
-    tableManager.setStatus("수정은 1건만 선택");
+  if (!viewRows.length) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="13" class="table-empty">조회 결과 없음</td>
+      </tr>
+    `;
     return;
   }
 
-  const row = getRows().find(item => item.id === ids[0]);
-  if (!row) return;
-
-  editId = row.id;
-  formModal.setTitle("선택 수정");
-  setFormValues({
-    country: row.country ?? "",
-    code: row.code ?? "",
-    box: row.box ?? "",
-    name: row.name ?? "",
-    note: row.note ?? "",
-    qty: row.qty ?? ""
-  });
-  formModal.open();
-}
-
-function deleteSelectedRows() {
-  const ids = getSelectedIds();
-
-  if (!ids.length) {
-    tableManager.setStatus("삭제할 행을 선택");
-    return;
-  }
-
-  openConfirm({
-    mountId: "modal-root",
-    title: "삭제 확인",
-    message: `선택한 ${num(ids.length)}건을 삭제할까요?`,
-    onConfirm: () => {
-      const nextRows = getRows().filter(row => !ids.includes(row.id));
-      saveRows(nextRows);
-      renderTable();
-      tableManager.setStatus(`${num(ids.length)}건 삭제 완료`);
-    }
-  });
-}
-
-function sumSelectedQty() {
-  const ids = getSelectedIds();
-  let targetRows = [];
-
-  if (ids.length) {
-    targetRows = getRows().filter(row => ids.includes(row.id));
-  } else {
-    targetRows = getFilteredRows();
-  }
-
-  const total = targetRows.reduce((acc, row) => acc + toNumber(row.qty), 0);
-
-  if (ids.length) {
-    tableManager.setStatus(`선택 수량 합계: ${num(total)}`);
-  } else {
-    tableManager.setStatus(`전체 수량 합계: ${num(total)}`);
-  }
-}
-
-function countFilledFields(data) {
-  const values = [
-    data.country,
-    data.code,
-    data.box,
-    data.name,
-    data.note,
-    data.qty
-  ];
-
-  return values.filter(v => {
-    if (v === null || v === undefined) return false;
-    if (typeof v === "number") return v !== 0;
-    return String(v).trim() !== "";
-  }).length;
-}
-
-function saveFormRow() {
-  const rows = getRows();
-  const values = getFormValues();
-
-  const data = {
-    id: editId || uid(),
-    no: editId ? findExistingNo(editId, rows) : nextNo(rows),
-    country: values.country,
-    code: values.code,
-    box: values.box,
-    name: values.name,
-    note: values.note,
-    qty: toNumber(values.qty),
-    writer: currentUserName
-  };
-
-  if (countFilledFields(data) < 2) {
-    tableManager.setStatus("신규 / 수정은 2개 이상 입력");
-    return false;
-  }
-
-  if (editId) {
-    const idx = rows.findIndex(row => row.id === editId);
-    if (idx > -1) rows[idx] = data;
-    tableManager.setStatus("수정 완료");
-  } else {
-    rows.push(data);
-    tableManager.setStatus("등록 완료");
-  }
-
-  saveRows(rows);
-  renderTable();
-  return true;
-}
-
-function savePasteRows() {
-  const text = getPasteTextarea().value.trim();
-
-  if (!text) {
-    tableManager.setStatus("붙여넣기 데이터가 없습니다");
-    return false;
-  }
-
-  const lines = text.split(/\r?\n/).filter(Boolean);
-  const rows = getRows();
-  let nextNumber = nextNo(rows);
-  const newRows = [];
-
-  for (const line of lines) {
-    const cols = line.split("\t");
-    if (cols.length < 7) continue;
-
-    const row = {
-      id: uid(),
-      no: toNumber(cols[0]) || nextNumber++,
-      country: String(cols[1] || "").trim(),
-      code: String(cols[2] || "").trim(),
-      box: String(cols[3] || "").trim(),
-      name: String(cols[4] || "").trim(),
-      note: String(cols[5] || "").trim(),
-      qty: toNumber(cols[6]),
-      writer: currentUserName
-    };
-
-    if (countFilledFields(row) >= 2) {
-      newRows.push(row);
-    }
-  }
-
-  if (!newRows.length) {
-    tableManager.setStatus("2개 이상 입력된 행이 없습니다");
-    return false;
-  }
-
-  rows.push(...newRows);
-  saveRows(rows);
-  renderTable();
-  tableManager.setStatus(`${num(newRows.length)}건 등록 완료`);
-  return true;
+  tbody.innerHTML = viewRows.map((row, idx) => {
+    return `
+      <tr>
+        <td><input type="checkbox" class="chk"></td>
+        <td class="mono-num">${idx + 1}</td>
+        <td class="mono-num">${esc(row.invoice)}</td>
+        <td>${esc(row.country)}</td>
+        <td class="mono-num">${esc(row.ship_date)}</td>
+        <td>${esc(row.location)}</td>
+        <td class="mono-num">${esc(row.material_no)}</td>
+        <td class="mono-num">${esc(row.box_no)}</td>
+        <td>${esc(row.material_name)}</td>
+        <td class="mono-num">${num(row.inbound_qty)}</td>
+        <td class="mono-num">${esc(row.mfg_date)}</td>
+        <td class="mono-num">${esc(row.exp_date)}</td>
+        <td>${esc(row.note)}</td>
+      </tr>
+    `;
+  }).join("");
 }
 
 function downloadExcel() {
-  const rows = getFilteredRows().map(row => ({
-    NO: row.no,
-    국가: row.country,
-    코드: row.code,
-    박스번호: row.box,
-    자재내역: row.name,
-    비고: row.note,
-    재고: row.qty,
-    등록자: row.writer || ""
+  if (!viewRows.length) return;
+
+  const rows = viewRows.map(r => ({
+    인보이스: r.invoice,
+    국가: r.country,
+    출고일: r.ship_date,
+    위치: r.location,
+    코드: r.material_no,
+    박스번호: r.box_no,
+    상품명: r.material_name,
+    재고: r.inbound_qty,
+    제조일자: r.mfg_date,
+    유통기한: r.exp_date,
+    비고: r.note
   }));
 
   downloadExcelFile({
-    fileName: "stock.xlsx",
-    sheetName: "stock",
+    fileName: "stock_query.xlsx",
+    sheetName: "stock_query",
     rows
   });
-
-  tableManager.setStatus("엑셀 다운로드 완료");
 }
 
-function nextNo(rows) {
-  const maxNo = rows.reduce((max, row) => Math.max(max, toNumber(row.no)), 0);
-  return maxNo + 1;
-}
+function printPage() {
+  if (!viewRows.length) return;
 
-function findExistingNo(id, rows) {
-  const found = rows.find(row => row.id === id);
-  return found ? toNumber(found.no) : nextNo(rows);
-}
+  const topbar = document.getElementById("page-topbar")?.innerHTML || "";
+  const table = document.getElementById("stock-table")?.outerHTML || "";
 
-function getFormModalHtml() {
-  return `
-    <div class="wms-form-grid">
-      <div class="wms-form-row">
-        <label class="wms-form-label" for="f-country">국가</label>
-        <input id="f-country" class="wms-form-input" type="text">
+  const printWindow = window.open("", "_blank", "width=1200,height=800");
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+      <meta charset="UTF-8">
+      <title>재고조회 인쇄</title>
+      <style>
+        @page {
+          size: A4 landscape;
+          margin: 8mm;
+        }
+
+        body {
+          margin: 0;
+          font-family: Arial, "Noto Sans KR", sans-serif;
+          color: #111827;
+          background: #fff;
+        }
+
+        .print-topbar {
+          margin-bottom: 10px;
+          padding-bottom: 8px;
+          border-bottom: 1px solid #d1d5db;
+        }
+
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          font-size: 10px;
+        }
+
+        th, td {
+          border: 1px solid #d1d5db;
+          padding: 4px 5px;
+          text-align: left;
+          white-space: nowrap;
+        }
+
+        th {
+          background: #f3f4f6;
+          font-weight: 800;
+        }
+
+        .chk,
+        .sort-mark,
+        .resize-handle {
+          display: none !important;
+        }
+
+        th:first-child,
+        td:first-child {
+          display: none !important;
+        }
+      </style>
+    </head>
+
+    <body>
+      <div class="print-topbar">
+        ${topbar}
       </div>
 
-      <div class="wms-form-row">
-        <label class="wms-form-label" for="f-code">코드</label>
-        <input id="f-code" class="wms-form-input" type="text">
-      </div>
+      ${table}
 
-      <div class="wms-form-row">
-        <label class="wms-form-label" for="f-box">박스번호</label>
-        <input id="f-box" class="wms-form-input" type="text">
-      </div>
+      <script>
+        window.onload = function(){
+          setTimeout(function(){
+            window.print();
+            window.close();
+          }, 300);
+        };
+      <\/script>
+    </body>
+    </html>
+  `);
 
-      <div class="wms-form-row">
-        <label class="wms-form-label" for="f-qty">재고</label>
-        <input id="f-qty" class="wms-form-input" type="number">
-      </div>
-
-      <div class="wms-form-row full">
-        <label class="wms-form-label" for="f-name">자재내역</label>
-        <input id="f-name" class="wms-form-input" type="text">
-      </div>
-
-      <div class="wms-form-row full">
-        <label class="wms-form-label" for="f-note">비고</label>
-        <input id="f-note" class="wms-form-input" type="text">
-      </div>
-    </div>
-  `;
+  printWindow.document.close();
 }
 
-function getPasteModalHtml() {
-  return `
-    <textarea id="paste-text" class="wms-form-textarea" placeholder="엑셀에서 복사 후 Ctrl+V"></textarea>
-    <div class="wms-help-text">열 순서 : NO / 국가 / 코드 / 박스번호 / 자재내역 / 비고 / 재고</div>
-  `;
+function clean(v) {
+  return String(v ?? "").trim();
 }
 
-function getFormElements() {
-  return {
-    country: document.getElementById("f-country"),
-    code: document.getElementById("f-code"),
-    box: document.getElementById("f-box"),
-    name: document.getElementById("f-name"),
-    note: document.getElementById("f-note"),
-    qty: document.getElementById("f-qty")
-  };
-}
-
-function setFormValues(values) {
-  const form = getFormElements();
-  form.country.value = values.country ?? "";
-  form.code.value = values.code ?? "";
-  form.box.value = values.box ?? "";
-  form.name.value = values.name ?? "";
-  form.note.value = values.note ?? "";
-  form.qty.value = values.qty ?? "";
-}
-
-function getFormValues() {
-  const form = getFormElements();
-  return {
-    country: form.country.value.trim(),
-    code: form.code.value.trim(),
-    box: form.box.value.trim(),
-    name: form.name.value.trim(),
-    note: form.note.value.trim(),
-    qty: form.qty.value
-  };
-}
-
-function getPasteTextarea() {
-  return document.getElementById("paste-text");
-}
-
-function uid() {
-  return "R" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-}
-
-function toNumber(value) {
-  const n = Number(String(value ?? "").replace(/,/g, "").trim());
+function toNumber(v) {
+  if (v === "") return 0;
+  const n = Number(String(v ?? "").replaceAll(",", "").replace(/[^\d.-]/g, ""));
   return Number.isFinite(n) ? n : 0;
 }
 
-function num(value) {
-  return Number(value || 0).toLocaleString("ko-KR");
+function num(v) {
+  if (v === "") return "";
+  return Number(v || 0).toLocaleString("ko-KR");
 }
 
-function esc(value) {
-  return String(value ?? "")
+function esc(v) {
+  return String(v ?? "")
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")

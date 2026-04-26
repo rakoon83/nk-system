@@ -9,7 +9,7 @@ const NAV_ITEMS = [
   {
     title: "메인",
     icon: "▣",
-    link: "/pages/dashboard/index.html"
+    link: "/index.html"
   },
   {
     title: "인식표출력",
@@ -19,15 +19,15 @@ const NAV_ITEMS = [
   {
     title: "이적작업",
     icon: "▣",
-    link: "/pages/tools/migrate.html"
+    link: "/pages/issues/expiry_free.html"
   },
   {
     title: "스캔검수",
     icon: "▣",
     children: [
-      { label: "상차검수", link: "/pages/scan/scan_load.html" },
       { label: "입고검수", link: "/pages/scan/scan_in.html" },
-      { label: "출고검수", link: "/pages/scan/scan_out.html" }
+      { label: "출고검수", link: "/pages/scan/scan_out.html" },
+      { label: "상차검수", link: "/pages/scan/scan_load.html" }
     ]
   },
   {
@@ -35,10 +35,11 @@ const NAV_ITEMS = [
     icon: "▣",
     children: [
       { label: "결품조회", link: "/pages/query/defect.html" },
+      //{ label: "결품조회-2", link: "/pages/query/defect_detail.html" },
       { label: "재고조회", link: "/pages/query/stock.html" },
       { label: "품목조회", link: "/pages/query/item.html" },
-      { label: "출고조회", link: "/pages/query/shipping.html" },
-      { label: "소모품조회", link: "/pages/query/supply.html" }
+      //{ label: "출고조회", link: "/pages/query/shipping.html" },
+      //{ label: "소모품조회", link: "/pages/query/supply.html" }
     ]
   },
   {
@@ -55,10 +56,10 @@ const NAV_ITEMS = [
     icon: "▣",
     children: [
       { label: "라벨입고", link: "/pages/repair/label_in.html" },
-      { label: "입고정보", link: "/pages/repair/repair_in.html" },
-      { label: "작업정보", link: "/pages/repair/repair_work.html" },
-      { label: "작업일지", link: "/pages/repair/worklog_a.html" },
-      { label: "작업인원", link: "/pages/repair/worklog_b.html" },
+      //{ label: "입고정보", link: "/pages/repair/repair_in.html" },
+      //{ label: "작업정보", link: "/pages/repair/repair_work.html" },
+      //{ label: "작업일지", link: "/pages/repair/worklog_a.html" },
+      //{ label: "작업인원", link: "/pages/repair/worklog_b.html" },
       { label: "작업검수스캔", link: "/pages/repair/worklog_scan.html" }
     ]
   },
@@ -75,11 +76,12 @@ const NAV_ITEMS = [
     title: "Dashboard",
     icon: "▣",
     children: [
-      { label: "설비 A", link: "/pages/dashboard/dashboard_a.html" },
-      { label: "보수 A", link: "/pages/dashboard/dashboard_repair_a.html" },
-      { label: "설비 B", link: "/pages/dashboard/dashboard_b.html" },
-      { label: "보수 B", link: "/pages/dashboard/dashboard_repair_b.html" },
-      { label: "전체", link: "/pages/dashboard/dashboard_all.html" }
+      //{ label: "설비 A", link: "/pages/dashboard/dashboard_a.html" },
+      //{ label: "보수 A", link: "/pages/dashboard/dashboard_repair_a.html" },
+      //{ label: "설비 B", link: "/pages/dashboard/dashboard_b.html" },
+      //{ label: "보수 B", link: "/pages/dashboard/dashboard_repair_b.html" },
+      //{ label: "전체", link: "/pages/dashboard/dashboard_all.html" },
+      { label: "전체 스캔 검수", link: "/pages/dashboard/invoice_progress.html"}
     ]
   },
   {
@@ -104,7 +106,9 @@ const NAV_ITEMS = [
       
       { label: "입고검수 로그", link: "/pages/scan/scan_in_log.html", roles: ["admin"] },
       { label: "출고검수 로그", link: "/pages/scan/scan_out_log.html", roles: ["admin"] },
-      { label: "보수검수 로그", link: "/pages/repair/worklog_scan_history.html", roles: ["admin"] },
+      { label: "상차검수 로그", link: "/pages/scan//scan_load_log.html", roles: ["admin"] },
+      { label: "스캔검수 로그", link: "/pages/admin/tools/invoice_progress_log.html", roles: ["admin"] },
+      { label: "보수검수 보관", link: "/pages/repair/worklog_scan_history.html", roles: ["admin"] },
       { label: "보수삭제 로그", link: "/pages/repair/worklog_scan_deleted.html", roles: ["admin"] },
       { label: "LCL출고 로그", link: "/pages/lcl/lcl_out_history.html" }
     ]
@@ -142,7 +146,7 @@ export function renderNav(options = {}) {
       <aside class="wms-sidebar ${isCollapsed ? "is-collapsed" : ""}" id="wms-sidebar">
         <div class="wms-sidebar-header">
           <div class="wms-brand">
-            <div class="wms-brand-title">WMS</div>
+            <div class="wms-brand-title">Ng</div>
             <div class="wms-brand-sub">Warehouse System</div>
           </div>
 

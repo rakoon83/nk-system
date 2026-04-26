@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>출고 검수</title>
+
+  <title>상차 검수</title>
 
   <link rel="icon" type="image/png" href="/assets/images/logo.png?v=1">
 
@@ -27,7 +28,7 @@
       flex-direction:column;
     }
 
-    .scan-out-page{
+    .scan-load-page{
       flex:1;
       min-height:0;
       display:flex;
@@ -174,25 +175,26 @@
       overflow:auto !important;
     }
 
-    #scan-out-table{
-      min-width:1370px;
+    #scan-load-table{
+      min-width:1500px;
       width:100%;
     }
 
-    .scan-out-table col:nth-child(1){width:70px;}
-    .scan-out-table col:nth-child(2){width:130px;}
-    .scan-out-table col:nth-child(3){width:130px;}
-    .scan-out-table col:nth-child(4){width:140px;}
-    .scan-out-table col:nth-child(5){width:340px;}
-    .scan-out-table col:nth-child(6){width:80px;}
-    .scan-out-table col:nth-child(7){width:90px;}
-    .scan-out-table col:nth-child(8){width:90px;}
-    .scan-out-table col:nth-child(9){width:90px;}
-    .scan-out-table col:nth-child(10){width:150px;}
-    .scan-out-table col:nth-child(11){width:190px;}
-    .scan-out-table col:nth-child(12){width:130px;}
+    .scan-load-table col:nth-child(1){width:70px;}
+    .scan-load-table col:nth-child(2){width:130px;}
+    .scan-load-table col:nth-child(3){width:130px;}
+    .scan-load-table col:nth-child(4){width:130px;}
+    .scan-load-table col:nth-child(5){width:140px;}
+    .scan-load-table col:nth-child(6){width:340px;}
+    .scan-load-table col:nth-child(7){width:80px;}
+    .scan-load-table col:nth-child(8){width:90px;}
+    .scan-load-table col:nth-child(9){width:90px;}
+    .scan-load-table col:nth-child(10){width:90px;}
+    .scan-load-table col:nth-child(11){width:150px;}
+    .scan-load-table col:nth-child(12){width:190px;}
+    .scan-load-table col:nth-child(13){width:130px;}
 
-    .scan-out-table th{
+    .scan-load-table th{
       cursor:pointer;
       user-select:none;
     }
@@ -303,7 +305,7 @@
     @media (max-width:900px){
       html,body{height:auto;min-height:100%;}
       #page-content,.wms-page-content{height:auto;min-height:100vh;}
-      .scan-out-page{height:auto;min-height:100vh;}
+      .scan-load-page{height:auto;min-height:100vh;}
       #print-area.table-shell{height:auto;min-height:420px;}
       .scan-row{flex-wrap:wrap;}
       .scan-row label{width:100%;}
@@ -317,7 +319,7 @@
   <div id="app-nav"></div>
 
   <div id="page-content">
-    <div class="scan-out-page">
+    <div class="scan-load-page">
       <div id="page-topbar"></div>
 
       <div class="scan-panel">
@@ -345,24 +347,25 @@
         <div id="scanStatus" class="scan-status">Invoice 조회 후 스캔하세요.</div>
 
         <div class="scan-log">
-          <div class="scan-log-title">스캔된 목록 최근 3건</div>
+          <div class="scan-log-title">상차검수 스캔 최근 3건</div>
           <div id="scanLogList"></div>
         </div>
       </div>
 
-      <div class="table-title">출고 검수 목록</div>
+      <div class="table-title">상차 검수 목록</div>
 
       <div id="print-area" class="table-shell">
-        <table class="wms-table scan-out-table" id="scan-out-table">
+        <table class="wms-table scan-load-table" id="scan-load-table">
           <colgroup>
-            <col><col><col><col><col><col><col><col><col><col><col><col>
+            <col><col><col><col><col><col><col><col><col><col><col><col><col>
           </colgroup>
 
           <thead>
             <tr>
               <th data-sort-key="list_no">번호 <span class="sort-mark">↕</span></th>
               <th data-sort-key="ready_status">입고/보수 <span class="sort-mark">↕</span></th>
-              <th data-sort-key="status_text">검수 <span class="sort-mark">↕</span></th>
+              <th data-sort-key="out_status">출고검수 <span class="sort-mark">↕</span></th>
+              <th data-sort-key="load_status">상차검수 <span class="sort-mark">↕</span></th>
               <th data-sort-key="box_no">박스번호 <span class="sort-mark">↕</span></th>
               <th data-sort-key="material_name">자재내역 <span class="sort-mark">↕</span></th>
               <th data-sort-key="work">작업 <span class="sort-mark">↕</span></th>
@@ -375,9 +378,9 @@
             </tr>
           </thead>
 
-          <tbody id="scan-out-tbody">
+          <tbody id="scan-load-tbody">
             <tr>
-              <td colspan="12" class="table-empty">Invoice 조회 후 표시됩니다.</td>
+              <td colspan="13" class="table-empty">Invoice 조회 후 표시됩니다.</td>
             </tr>
           </tbody>
         </table>
@@ -392,6 +395,7 @@
   <div id="unregModal" class="unreg-modal">
     <div class="unreg-box">
       <div class="unreg-head">미등록바코드 확인</div>
+
       <div class="unreg-body">
         <div>내역에 없는 바코드 / 코드 / 박스번호입니다.</div>
         <div id="unregCode" class="unreg-code">-</div>
@@ -401,8 +405,11 @@
           확인했습니다.
         </label>
       </div>
+
       <div class="unreg-foot">
-        <button id="btnUnregContinue" type="button" class="unreg-btn primary" disabled>확인 후 계속진행</button>
+        <button id="btnUnregContinue" type="button" class="unreg-btn primary" disabled>
+          확인 후 계속진행
+        </button>
       </div>
     </div>
   </div>
@@ -412,6 +419,6 @@
   <audio id="sound-modal" src="/sound/modal.mp3" preload="auto"></audio>
   <audio id="sound-ok" src="/sound/ok.mp3" preload="auto"></audio>
 
-  <script type="module" src="/assets/js/pages/scan/scan_out.js?v=20260425_10"></script>
+  <script type="module" src="/assets/js/pages/scan/scan_load.js?v=20260426_01"></script>
 </body>
 </html>

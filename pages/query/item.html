@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>재고조회</title>
+  <title>품목 조회</title>
 
   <link rel="icon" type="image/png" href="/assets/images/logo.png?v=1">
 
@@ -28,7 +28,7 @@
       flex-direction:column;
     }
 
-    .stock-page{
+    .item-page{
       flex:1;
       min-height:0;
       display:flex;
@@ -37,32 +37,32 @@
       overflow:hidden;
     }
 
-    #page-topbar,#stock-toolbar,#page-status{
+    #page-topbar,#item-toolbar,#page-status{
       flex:0 0 auto;
     }
 
-    .stock-search-panel{
+    .item-search-panel{
       flex:0 0 auto;
       padding:10px 12px;
       border-bottom:1px solid #e5e7eb;
       background:#fff;
     }
 
-    .stock-search-row{
+    .item-search-row{
       display:flex;
       gap:8px;
       align-items:center;
       flex-wrap:wrap;
     }
 
-    .stock-search-row label{
+    .item-search-row label{
       font-size:13px;
       font-weight:800;
       white-space:nowrap;
     }
 
-    .stock-search-input{
-      width:320px;
+    .item-search-input{
+      width:280px;
       height:38px;
       border:1px solid #cbd5e1;
       padding:0 10px;
@@ -70,7 +70,14 @@
       min-width:0;
     }
 
-    .stock-search-btn{
+    .item-date-input{
+      height:38px;
+      border:1px solid #cbd5e1;
+      padding:0 8px;
+      font-size:14px;
+    }
+
+    .item-search-btn{
       height:38px;
       padding:0 14px;
       border:1px solid #2563eb;
@@ -78,30 +85,6 @@
       color:#fff;
       font-weight:800;
       cursor:pointer;
-    }
-
-    .stock-filter-row{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      padding-top:10px;
-    }
-
-    .stock-filter-btn{
-      height:34px;
-      padding:0 14px;
-      border:1px solid #cbd5e1;
-      background:#fff;
-      color:#111827;
-      font-size:13px;
-      font-weight:800;
-      cursor:pointer;
-    }
-
-    .stock-filter-btn.is-active{
-      background:#111827;
-      color:#fff;
-      border-color:#111827;
     }
 
     .table-shell{overflow:auto !important;}
@@ -114,29 +97,47 @@
       overflow:auto !important;
     }
 
-    #stock-table{
-      min-width:1500px;
+    #item-table{
+      min-width:1600px;
       width:100%;
     }
 
-    .stock-table col:nth-child(1){width:44px;}
-    .stock-table col:nth-child(2){width:70px;}
-    .stock-table col:nth-child(3){width:130px;}
-    .stock-table col:nth-child(4){width:90px;}
-    .stock-table col:nth-child(5){width:110px;}
-    .stock-table col:nth-child(6){width:120px;}
-    .stock-table col:nth-child(7){width:110px;}
-    .stock-table col:nth-child(8){width:110px;}
-    .stock-table col:nth-child(9){width:330px;}
-    .stock-table col:nth-child(10){width:90px;}
-    .stock-table col:nth-child(11){width:120px;}
-    .stock-table col:nth-child(12){width:120px;}
-    .stock-table col:nth-child(13){width:240px;}
+    .item-table col:nth-child(1){width:44px;}
+    .item-table col:nth-child(2){width:80px;}
+    .item-table col:nth-child(3){width:130px;}
+    .item-table col:nth-child(4){width:90px;}
+    .item-table col:nth-child(5){width:110px;}
+    .item-table col:nth-child(6){width:130px;}
+    .item-table col:nth-child(7){width:110px;}
+    .item-table col:nth-child(8){width:100px;}
+    .item-table col:nth-child(9){width:330px;}
+    .item-table col:nth-child(10){width:80px;}
+    .item-table col:nth-child(11){width:80px;}
+    .item-table col:nth-child(12){width:80px;}
+    .item-table col:nth-child(13){width:120px;}
+    .item-table col:nth-child(14){width:260px;}
+
+    .item-badge{
+      display:inline-flex;
+      height:24px;
+      padding:0 10px;
+      align-items:center;
+      justify-content:center;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:900;
+      white-space:nowrap;
+    }
+
+    .item-badge.ok{background:#dcfce7;color:#15803d;}
+    .item-badge.bad{background:#fee2e2;color:#b91c1c;}
+    .item-badge.work-o{background:#dbeafe;color:#1d4ed8;}
+    .item-badge.work-x{background:#e2e8f0;color:#475569;}
 
     @media (max-width:1024px){
       html,body{height:auto;min-height:100%;}
       #page-content,.wms-page-content{height:auto;min-height:100vh;}
-      .stock-page{height:auto;min-height:100vh;}
+      .item-page{height:auto;min-height:100vh;}
 
       #print-area.table-shell{
         height:auto !important;
@@ -146,22 +147,62 @@
     }
 
     @media (max-width:640px){
-      .stock-search-input{
+      .item-search-input,
+      .item-date-input{
         width:100%;
         flex:1 1 100%;
       }
 
-      .stock-search-btn{
-        width:100%;
+      #item-toolbar{
+        background:#fff;
+        overflow:visible !important;
       }
 
-      .stock-filter-btn{
-        flex:1 1 calc(50% - 8px);
+      #item-toolbar .toolbar-row,
+      #item-toolbar .toolbar-inner,
+      #item-toolbar .toolbar-content{
+        display:flex !important;
+        flex-direction:column !important;
+        gap:8px !important;
+        width:100% !important;
       }
 
-      #print-area.table-shell{
-        min-height:460px;
+      #item-toolbar .toolbar-left,
+      #item-toolbar .toolbar-actions{
+        display:flex !important;
+        flex-wrap:wrap !important;
+        gap:6px !important;
+        width:100% !important;
+        order:1;
       }
+
+      #item-toolbar .toolbar-search,
+      #item-toolbar .search-box,
+      #item-toolbar .toolbar-search-box,
+      #item-toolbar .search-wrap{
+        width:100% !important;
+        order:2;
+      }
+
+      #item-toolbar input[type="search"],
+      #item-toolbar input[type="text"],
+      #item-toolbar #toolbar-search-input{
+        width:100% !important;
+        max-width:100% !important;
+      }
+
+      #item-toolbar .toolbar-user,
+      #item-toolbar .current-user,
+      #item-toolbar .toolbar-current-user,
+      #item-toolbar .user-info,
+      #item-toolbar [class*="user"]{
+        width:100% !important;
+        text-align:right !important;
+        order:3;
+        font-size:13px;
+      }
+
+      #print-area.table-shell{min-height:460px;}
     }
 
     @media print{
@@ -172,15 +213,15 @@
       }
 
       #app-nav,
-      #stock-toolbar,
-      .stock-search-panel,
+      #item-toolbar,
+      .item-search-panel,
       #page-status{
         display:none !important;
       }
 
       #page-content,
       .wms-page-content,
-      .stock-page{
+      .item-page{
         display:block !important;
         height:auto !important;
         min-height:0 !important;
@@ -200,14 +241,14 @@
         overflow:visible !important;
       }
 
-      #stock-table{
+      #item-table{
         min-width:0 !important;
         width:100% !important;
         font-size:10px !important;
       }
 
-      #stock-table th,
-      #stock-table td{
+      #item-table th,
+      #item-table td{
         padding:4px 5px !important;
       }
 
@@ -229,31 +270,26 @@
   <div id="app-nav"></div>
 
   <div id="page-content">
-    <div class="stock-page">
+    <div class="item-page">
       <div id="page-topbar"></div>
-      <div id="stock-toolbar"></div>
+      <div id="item-toolbar"></div>
 
-      <div class="stock-search-panel">
-        <div class="stock-search-row">
-          <label for="keywordInput">인보이스 / 코드 / 박스번호</label>
-          <input id="keywordInput" class="stock-search-input" type="text" autocomplete="off">
-          <button id="btnSearchStock" class="stock-search-btn" type="button">조회</button>
-        </div>
+      <div class="item-search-panel">
+        <div class="item-search-row">
+          <label for="keywordInput">코드/박스번호</label>
+          <input id="keywordInput" class="item-search-input" type="text" autocomplete="off">
 
-        <div class="stock-filter-row">
-          <button class="stock-filter-btn" type="button" data-filter="EX">EX창고</button>
-          <button class="stock-filter-btn" type="button" data-filter="GA">GA창고</button>
-          <button class="stock-filter-btn" type="button" data-filter="BO">BO</button>
-          <button class="stock-filter-btn" type="button" data-filter="SSS">SSS창고</button>
-          <button class="stock-filter-btn" type="button" data-filter="FF">파손창고</button>
-          <button class="stock-filter-btn" type="button" data-filter="CBM">CBM초과</button>
-          <button class="stock-filter-btn" type="button" data-filter="라벨">라벨</button>
-          <button class="stock-filter-btn" type="button" data-filter="전용">전용</button>
+          <label for="dateFromInput">출고일</label>
+          <input id="dateFromInput" class="item-date-input" type="date">
+          <span>~</span>
+          <input id="dateToInput" class="item-date-input" type="date">
+
+          <button id="btnSearchItem" class="item-search-btn" type="button">조회</button>
         </div>
       </div>
 
       <div id="print-area" class="table-shell">
-        <table class="wms-table stock-table" id="stock-table">
+        <table class="wms-table item-table" id="item-table">
           <colgroup>
             <col>
             <col data-col-key="no">
@@ -264,9 +300,10 @@
             <col data-col-key="material_no">
             <col data-col-key="box_no">
             <col data-col-key="material_name">
+            <col data-col-key="work">
+            <col data-col-key="outbound_qty">
             <col data-col-key="inbound_qty">
-            <col data-col-key="mfg_date">
-            <col data-col-key="exp_date">
+            <col data-col-key="comparison">
             <col data-col-key="note">
           </colgroup>
 
@@ -274,23 +311,24 @@
             <tr>
               <th><div class="th-inner th-center"><input type="checkbox" class="chk" id="chk-all"></div></th>
               <th data-col-key="no"><div class="th-inner"><span class="th-label">NO</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
-              <th data-col-key="invoice"><div class="th-inner"><span class="th-label">인보이스</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="invoice"><div class="th-inner"><span class="th-label">Invoice</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
               <th data-col-key="country"><div class="th-inner"><span class="th-label">국가</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
               <th data-col-key="ship_date"><div class="th-inner"><span class="th-label">출고일</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
               <th data-col-key="location"><div class="th-inner"><span class="th-label">위치</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
               <th data-col-key="material_no"><div class="th-inner"><span class="th-label">코드</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
               <th data-col-key="box_no"><div class="th-inner"><span class="th-label">박스번호</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
-              <th data-col-key="material_name"><div class="th-inner"><span class="th-label">상품명</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
-              <th data-col-key="inbound_qty"><div class="th-inner"><span class="th-label">재고</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
-              <th data-col-key="mfg_date"><div class="th-inner"><span class="th-label">제조일자</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
-              <th data-col-key="exp_date"><div class="th-inner"><span class="th-label">유통기한</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="material_name"><div class="th-inner"><span class="th-label">자재내역</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="work"><div class="th-inner"><span class="th-label">작업</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="outbound_qty"><div class="th-inner"><span class="th-label">출고</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="inbound_qty"><div class="th-inner"><span class="th-label">입고</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
+              <th data-col-key="comparison"><div class="th-inner"><span class="th-label">비교</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
               <th data-col-key="note"><div class="th-inner"><span class="th-label">비고</span><span class="sort-mark">↕</span><span class="resize-handle"></span></div></th>
             </tr>
           </thead>
 
-          <tbody id="stock-tbody">
+          <tbody id="item-tbody">
             <tr>
-              <td colspan="13" class="table-empty">인보이스 / 코드 / 박스번호 조회 후 표시됩니다.</td>
+              <td colspan="14" class="table-empty">코드/박스번호 조회 후 표시됩니다.</td>
             </tr>
           </tbody>
         </table>
@@ -300,6 +338,6 @@
     </div>
   </div>
 
-  <script type="module" src="/assets/js/pages/query/stock.js?v=20260426_01"></script>
+  <script type="module" src="/assets/js/pages/query/item.js?v=20260426_10"></script>
 </body>
 </html>
