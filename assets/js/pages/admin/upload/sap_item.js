@@ -9,9 +9,7 @@ import { downloadExcelFile } from "/assets/js/shared/excel.js";
 checkAuth();
 preparePageContent("app-nav", "page-content");
 
-renderNav({
-  mountId: "app-nav"
-});
+renderNav({ mountId: "app-nav" });
 
 const SUPABASE_URL = "https://pdadmygpowrhrxxwawak.supabase.co";
 const SUPABASE_KEY = "sb_publishable_Hzk4cMVV-7hFDP_ehgqh_A_CFcQm-A1";
@@ -20,7 +18,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const TABLE_NAME = "sap_item";
 const FETCH_PAGE_SIZE = 1000;
 const RENDER_PAGE_SIZE = 500;
-const SAVE_CHUNK_SIZE = 1000;
+const CHUNK_SIZE = 500;
 
 const loginUser = getLoginUser();
 const currentUserName = loginUser?.name || loginUser?.id || "-";
@@ -107,9 +105,7 @@ const tableManager = createTableManager({
     toolbar.setDisabled("edit", ids.length !== 1);
     toolbar.setDisabled("remove", ids.length < 1);
   },
-  onColumnChange: () => {
-    renderTable(true);
-  }
+  onColumnChange: () => renderTable(true)
 });
 
 const formModal = createModal({
@@ -146,7 +142,8 @@ function bindEvents() {
   toolbar.on("download", downloadExcel);
   toolbar.on("print", () => window.print());
   toolbar.on("sum", sumSelectedQty);
-  toolbar.on("config", deleteAllRows);
+
+  document.getElementById("btn-delete-all")?.addEventListener("click", deleteAllRows);
 
   toolbar.searchInput?.addEventListener("input", () => renderTable(true));
 
@@ -159,14 +156,10 @@ function bindEvents() {
 }
 
 function onTableScroll() {
-  if (!printArea) return;
-  if (isAppending) return;
-  if (renderedCount >= filteredRowsCache.length) return;
+  if (!printArea || isAppending || renderedCount >= filteredRowsCache.length) return;
 
   const remain = printArea.scrollHeight - printArea.scrollTop - printArea.clientHeight;
-  if (remain < 300) {
-    appendNextRows();
-  }
+  if (remain < 300) appendNextRows();
 }
 
 async function fetchAllRows() {
@@ -361,6 +354,7 @@ function editSelectedRow() {
 
   editId = row.id;
   formModal.setTitle("선택 수정");
+
   setFormValues({
     invoice: row.invoice ?? "",
     list_no: row.list_no ?? "",
@@ -375,6 +369,7 @@ function editSelectedRow() {
     weight: row.weight ?? "",
     note: row.note ?? ""
   });
+
   formModal.open();
 }
 
@@ -391,8 +386,8 @@ async function deleteSelectedRows() {
     title: "삭제 확인",
     message: `선택한 ${num(ids.length)}건을 삭제할까요?`,
     onConfirm: async () => {
-      for (let i = 0; i < ids.length; i += SAVE_CHUNK_SIZE) {
-        const chunk = ids.slice(i, i + SAVE_CHUNK_SIZE);
+      for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+        const chunk = ids.slice(i, i + CHUNK_SIZE);
 
         const { error } = await supabaseClient
           .from(TABLE_NAME)
@@ -421,20 +416,15 @@ async function deleteAllRows() {
   openConfirm({
     mountId: "modal-root",
     title: "전체 삭제 확인",
-    message: `현재 sap_item 데이터 ${num(allRows.length)}건을 전체 삭제할까요?`,
+    message: `현재 ${num(allRows.length)}건을 전체 삭제할까요?`,
     onConfirm: async () => {
       const ids = allRows.map(row => Number(row.id)).filter(Boolean);
 
-      if (!ids.length) {
-        tableManager.setStatus("삭제할 ID가 없습니다");
-        return;
-      }
-
-      for (let i = 0; i < ids.length; i += SAVE_CHUNK_SIZE) {
-        const chunk = ids.slice(i, i + SAVE_CHUNK_SIZE);
+      for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+        const chunk = ids.slice(i, i + CHUNK_SIZE);
 
         tableManager.setStatus(
-          `전체 삭제 중... ${num(Math.min(i + SAVE_CHUNK_SIZE, ids.length))} / ${num(ids.length)}`
+          `전체 삭제 중... ${num(Math.min(i + CHUNK_SIZE, ids.length))} / ${num(ids.length)}`
         );
 
         const { error } = await supabaseClient
@@ -457,21 +447,13 @@ async function deleteAllRows() {
 
 function sumSelectedQty() {
   const ids = getSelectedIds();
-  let targetRows = [];
+  let targetRows = ids.length
+    ? allRows.filter(row => ids.includes(Number(row.id)))
+    : filteredRowsCache;
 
-  if (ids.length) {
-    targetRows = allRows.filter(row => ids.includes(Number(row.id)));
-  } else {
-    targetRows = filteredRowsCache;
-  }
+  const total = targetRows.reduce((acc, row) => acc + toInt(row.total_qty), 0);
 
-  const total = targetRows.reduce((acc, row) => acc + toNumber(row.total_qty), 0);
-
-  if (ids.length) {
-    tableManager.setStatus(`선택 합계: ${num(total)}`);
-  } else {
-    tableManager.setStatus(`전체 합계: ${num(total)}`);
-  }
+  tableManager.setStatus(ids.length ? `선택 합계: ${num(total)}` : `전체 합계: ${num(total)}`);
 }
 
 async function saveFormRow() {
@@ -482,10 +464,10 @@ async function saveFormRow() {
     list_no: values.list_no,
     material_no: values.material_no,
     material_name: values.material_name,
-    outbound_qty: toNumber(values.outbound_qty),
-    product_qty: toNumber(values.product_qty),
-    outer_box_qty: toNumber(values.outer_box_qty),
-    total_qty: toNumber(values.total_qty),
+    outbound_qty: toInt(values.outbound_qty),
+    product_qty: toInt(values.product_qty),
+    outer_box_qty: toInt(values.outer_box_qty),
+    total_qty: toInt(values.total_qty),
     cbm: toDecimal(values.cbm),
     packing: toDecimal(values.packing),
     weight: values.weight,
@@ -505,7 +487,7 @@ async function saveFormRow() {
 
     if (error) {
       console.error(error);
-      tableManager.setStatus("수정 실패");
+      tableManager.setStatus(error.message || "수정 실패");
       return false;
     }
 
@@ -520,7 +502,7 @@ async function saveFormRow() {
 
   if (error) {
     console.error(error);
-    tableManager.setStatus("등록 실패");
+    tableManager.setStatus(error.message || "등록 실패");
     return false;
   }
 
@@ -562,10 +544,12 @@ async function savePasteRows() {
       list_no: secondCol,
       material_no: thirdCol,
       material_name: String(cols[3] || "").trim(),
-      outbound_qty: toNumber(cols[4]),
-      product_qty: toNumber(cols[5]),
-      outer_box_qty: toNumber(cols[6]),
-      total_qty: toNumber(cols[7]),
+
+      outbound_qty: toInt(cols[4]),
+      product_qty: toInt(cols[5]),
+      outer_box_qty: toInt(cols[6]),
+      total_qty: toInt(cols[7]),
+
       cbm: toDecimal(cols[8]),
       packing: toDecimal(cols[9]),
       weight: String(cols[10] || "").trim(),
@@ -581,8 +565,6 @@ async function savePasteRows() {
     tableManager.setStatus("등록할 데이터가 없습니다");
     return false;
   }
-
-  const CHUNK_SIZE = 500;
 
   for (let i = 0; i < newRows.length; i += CHUNK_SIZE) {
     const chunk = newRows.slice(i, i + CHUNK_SIZE);
@@ -637,65 +619,18 @@ function downloadExcel() {
 function getFormModalHtml() {
   return `
     <div class="wms-form-grid">
-      <div class="wms-form-row">
-        <label class="wms-form-label" for="f-invoice">Invoice</label>
-        <input id="f-invoice" class="wms-form-input" type="text">
-      </div>
-
-      <div class="wms-form-row">
-        <label class="wms-form-label" for="f-list-no">번호</label>
-        <input id="f-list-no" class="wms-form-input" type="text">
-      </div>
-
-      <div class="wms-form-row">
-        <label class="wms-form-label" for="f-material-no">코드</label>
-        <input id="f-material-no" class="wms-form-input" type="text">
-      </div>
-
-      <div class="wms-form-row full">
-        <label class="wms-form-label" for="f-material-name">자재내역</label>
-        <input id="f-material-name" class="wms-form-input" type="text">
-      </div>
-
-      <div class="wms-form-row">
-        <label class="wms-form-label" for="f-outbound-qty">출고</label>
-        <input id="f-outbound-qty" class="wms-form-input" type="number">
-      </div>
-
-      <div class="wms-form-row">
-        <label class="wms-form-label" for="f-product-qty">제품</label>
-        <input id="f-product-qty" class="wms-form-input" type="number">
-      </div>
-
-      <div class="wms-form-row">
-        <label class="wms-form-label" for="f-outer-box-qty">외박스</label>
-        <input id="f-outer-box-qty" class="wms-form-input" type="number">
-      </div>
-
-      <div class="wms-form-row">
-        <label class="wms-form-label" for="f-total-qty">합계</label>
-        <input id="f-total-qty" class="wms-form-input" type="number">
-      </div>
-
-      <div class="wms-form-row">
-        <label class="wms-form-label" for="f-cbm">CBM</label>
-        <input id="f-cbm" class="wms-form-input" type="text">
-      </div>
-
-      <div class="wms-form-row">
-        <label class="wms-form-label" for="f-packing">중량</label>
-        <input id="f-packing" class="wms-form-input" type="text">
-      </div>
-
-      <div class="wms-form-row">
-        <label class="wms-form-label" for="f-weight">단위</label>
-        <input id="f-weight" class="wms-form-input" type="text">
-      </div>
-
-      <div class="wms-form-row full">
-        <label class="wms-form-label" for="f-note">비고</label>
-        <input id="f-note" class="wms-form-input" type="text">
-      </div>
+      <div class="wms-form-row"><label class="wms-form-label" for="f-invoice">Invoice</label><input id="f-invoice" class="wms-form-input" type="text"></div>
+      <div class="wms-form-row"><label class="wms-form-label" for="f-list-no">번호</label><input id="f-list-no" class="wms-form-input" type="text"></div>
+      <div class="wms-form-row"><label class="wms-form-label" for="f-material-no">코드</label><input id="f-material-no" class="wms-form-input" type="text"></div>
+      <div class="wms-form-row full"><label class="wms-form-label" for="f-material-name">자재내역</label><input id="f-material-name" class="wms-form-input" type="text"></div>
+      <div class="wms-form-row"><label class="wms-form-label" for="f-outbound-qty">출고</label><input id="f-outbound-qty" class="wms-form-input" type="number"></div>
+      <div class="wms-form-row"><label class="wms-form-label" for="f-product-qty">제품</label><input id="f-product-qty" class="wms-form-input" type="number"></div>
+      <div class="wms-form-row"><label class="wms-form-label" for="f-outer-box-qty">외박스</label><input id="f-outer-box-qty" class="wms-form-input" type="number"></div>
+      <div class="wms-form-row"><label class="wms-form-label" for="f-total-qty">합계</label><input id="f-total-qty" class="wms-form-input" type="number"></div>
+      <div class="wms-form-row"><label class="wms-form-label" for="f-cbm">CBM</label><input id="f-cbm" class="wms-form-input" type="text"></div>
+      <div class="wms-form-row"><label class="wms-form-label" for="f-packing">중량</label><input id="f-packing" class="wms-form-input" type="text"></div>
+      <div class="wms-form-row"><label class="wms-form-label" for="f-weight">단위</label><input id="f-weight" class="wms-form-input" type="text"></div>
+      <div class="wms-form-row full"><label class="wms-form-label" for="f-note">비고</label><input id="f-note" class="wms-form-input" type="text"></div>
     </div>
   `;
 }
@@ -762,9 +697,13 @@ function getPasteTextarea() {
   return document.getElementById("paste-text");
 }
 
-function toNumber(value) {
-  const text = String(value ?? "").replace(/,/g, "").trim();
-  if (!text) return 0;
+function toInt(value) {
+  const text = String(value ?? "")
+    .replace(/,/g, "")
+    .replace(/[^\d.-]/g, "")
+    .trim();
+
+  if (!text || text === "-" || text === "." || text === "-.") return 0;
 
   const n = Number(text);
   if (!Number.isFinite(n)) return 0;
@@ -773,8 +712,13 @@ function toNumber(value) {
 }
 
 function toDecimal(value) {
-  const text = String(value ?? "").replace(/,/g, "").trim();
-  if (!text) return null;
+  const text = String(value ?? "")
+    .replace(/,/g, "")
+    .replace(/[^\d.-]/g, "")
+    .trim();
+
+  if (!text || text === "-" || text === "." || text === "-.") return null;
+
   const n = Number(text);
   return Number.isFinite(n) ? n : null;
 }
