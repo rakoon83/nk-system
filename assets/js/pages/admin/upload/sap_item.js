@@ -763,8 +763,13 @@ function getPasteTextarea() {
 }
 
 function toNumber(value) {
-  const n = Number(String(value ?? "").replace(/,/g, "").trim());
-  return Number.isFinite(n) ? n : 0;
+  const text = String(value ?? "").replace(/,/g, "").trim();
+  if (!text) return 0;
+
+  const n = Number(text);
+  if (!Number.isFinite(n)) return 0;
+
+  return Math.round(n);
 }
 
 function toDecimal(value) {
