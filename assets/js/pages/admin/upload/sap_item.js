@@ -582,11 +582,13 @@ async function savePasteRows() {
     return false;
   }
 
-  for (let i = 0; i < newRows.length; i += SAVE_CHUNK_SIZE) {
-    const chunk = newRows.slice(i, i + SAVE_CHUNK_SIZE);
+  const CHUNK_SIZE = 500;
+
+  for (let i = 0; i < newRows.length; i += CHUNK_SIZE) {
+    const chunk = newRows.slice(i, i + CHUNK_SIZE);
 
     tableManager.setStatus(
-      `대량 등록 중... ${num(Math.min(i + SAVE_CHUNK_SIZE, newRows.length))} / ${num(newRows.length)}`
+      `대량 등록 중... ${num(Math.min(i + CHUNK_SIZE, newRows.length))} / ${num(newRows.length)}`
     );
 
     const { error } = await supabaseClient
@@ -594,8 +596,8 @@ async function savePasteRows() {
       .insert(chunk);
 
     if (error) {
-      console.error(error);
-      tableManager.setStatus("대량 등록 실패");
+      console.error("대량 등록 실패 위치:", i, chunk[0], error);
+      tableManager.setStatus(error.message || "대량 등록 실패");
       return false;
     }
   }
