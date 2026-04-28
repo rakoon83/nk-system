@@ -461,7 +461,7 @@ async function saveFormRow() {
 
   const data = {
     invoice: values.invoice,
-    list_no: values.list_no,
+    list_no: toInt(values.list_no),
     material_no: values.material_no,
     material_name: values.material_name,
     outbound_qty: toInt(values.outbound_qty),
@@ -540,21 +540,21 @@ async function savePasteRows() {
     }
 
     const row = {
-      invoice: firstCol,
-      list_no: secondCol,
-      material_no: thirdCol,
-      material_name: String(cols[3] || "").trim(),
+  invoice: firstCol,
+  list_no: toInt(secondCol),
+  material_no: thirdCol,
+  material_name: String(cols[3] || "").trim(),
 
-      outbound_qty: toInt(cols[4]),
-      product_qty: toInt(cols[5]),
-      outer_box_qty: toInt(cols[6]),
-      total_qty: toInt(cols[7]),
+  outbound_qty: toInt(cols[4]),
+  product_qty: toInt(cols[5]),
+  outer_box_qty: toInt(cols[6]),
+  total_qty: toInt(cols[7]),
 
-      cbm: toDecimal(cols[8]),
-      packing: toDecimal(cols[9]),
-      weight: String(cols[10] || "").trim(),
-      note: String(cols[11] || "").trim()
-    };
+  cbm: toDecimal(cols[8]),
+  packing: toDecimal(cols[9]),
+  weight: String(cols[10] || "").trim(),
+  note: String(cols[11] || "").trim()
+};
 
     if (row.invoice || row.material_no || row.material_name) {
       newRows.push(row);
