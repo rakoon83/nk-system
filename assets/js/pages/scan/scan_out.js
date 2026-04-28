@@ -113,6 +113,15 @@ function bindEvents() {
     handleScan();
   });
 
+scanInput?.addEventListener("search", () => {
+  if (scanLocked) return;
+
+  const value = clean(scanInput.value);
+  if (!value) return;
+
+  handleScan();
+});
+
   btnSpecialNote?.addEventListener("click", openSpecialNote);
 
   unregCheck?.addEventListener("change", () => {
@@ -481,15 +490,7 @@ async function handleScan() {
     return;
   }
 
-  if (!clean(target.ready_status).includes("완료")) {
-    playSound("error");
-    addScanLog("err", `${value} - ${target.ready_status}`);
-    setScanStatus(`출고불가: ${target.ready_status}`, "err");
-    scanInput.value = "";
-    scanInput.focus();
-    return;
-  }
-
+  
   if (target.scan) {
     target.is_dup = true;
     playSound("dup");

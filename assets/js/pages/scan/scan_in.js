@@ -105,6 +105,15 @@ function bindEvents() {
     handleScan();
   });
 
+  scanInput?.addEventListener("change", () => {
+  if (scanLocked) return;
+
+  const value = clean(scanInput.value);
+  if (!value) return;
+
+  handleScan();
+});
+
   btnSpecialNote?.addEventListener("click", openSpecialNote);
 
   unregCheck?.addEventListener("change", () => {

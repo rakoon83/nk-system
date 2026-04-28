@@ -20,6 +20,7 @@ const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const TABLE_NAME = "sap_item";
 const FETCH_PAGE_SIZE = 1000;
 const RENDER_PAGE_SIZE = 500;
+const SAVE_CHUNK_SIZE = 1000;
 
 const loginUser = getLoginUser();
 const currentUserName = loginUser?.name || loginUser?.id || "-";
@@ -145,6 +146,7 @@ function bindEvents() {
   toolbar.on("download", downloadExcel);
   toolbar.on("print", () => window.print());
   toolbar.on("sum", sumSelectedQty);
+  toolbar.on("config", deleteAllRows);
 
   toolbar.searchInput?.addEventListener("input", () => renderTable(true));
 
@@ -238,6 +240,7 @@ function getFilteredRows() {
   }));
 
   rows.sort((a, b) => compareTableValue(a[sortKey], b[sortKey], sortDir));
+
   rows.forEach((row, index) => {
     row.no = index + 1;
   });
@@ -388,19 +391,66 @@ async function deleteSelectedRows() {
     title: "삭제 확인",
     message: `선택한 ${num(ids.length)}건을 삭제할까요?`,
     onConfirm: async () => {
-      const { error } = await supabaseClient
-        .from(TABLE_NAME)
-        .delete()
-        .in("id", ids);
+      for (let i = 0; i < ids.length; i += SAVE_CHUNK_SIZE) {
+        const chunk = ids.slice(i, i + SAVE_CHUNK_SIZE);
 
-      if (error) {
-        console.error(error);
-        tableManager.setStatus("삭제 실패");
-        return;
+        const { error } = await supabaseClient
+          .from(TABLE_NAME)
+          .delete()
+          .in("id", chunk);
+
+        if (error) {
+          console.error(error);
+          tableManager.setStatus("삭제 실패");
+          return;
+        }
       }
 
       await loadRows();
       tableManager.setStatus(`${num(ids.length)}건 삭제 완료`);
+    }
+  });
+}
+
+async function deleteAllRows() {
+  if (!allRows.length) {
+    tableManager.setStatus("삭제할 데이터가 없습니다");
+    return;
+  }
+
+  openConfirm({
+    mountId: "modal-root",
+    title: "전체 삭제 확인",
+    message: `현재 sap_item 데이터 ${num(allRows.length)}건을 전체 삭제할까요?`,
+    onConfirm: async () => {
+      const ids = allRows.map(row => Number(row.id)).filter(Boolean);
+
+      if (!ids.length) {
+        tableManager.setStatus("삭제할 ID가 없습니다");
+        return;
+      }
+
+      for (let i = 0; i < ids.length; i += SAVE_CHUNK_SIZE) {
+        const chunk = ids.slice(i, i + SAVE_CHUNK_SIZE);
+
+        tableManager.setStatus(
+          `전체 삭제 중... ${num(Math.min(i + SAVE_CHUNK_SIZE, ids.length))} / ${num(ids.length)}`
+        );
+
+        const { error } = await supabaseClient
+          .from(TABLE_NAME)
+          .delete()
+          .in("id", chunk);
+
+        if (error) {
+          console.error(error);
+          tableManager.setStatus("전체 삭제 실패");
+          return;
+        }
+      }
+
+      await loadRows();
+      tableManager.setStatus(`${num(ids.length)}건 전체 삭제 완료`);
     }
   });
 }
@@ -532,14 +582,22 @@ async function savePasteRows() {
     return false;
   }
 
-  const { error } = await supabaseClient
-    .from(TABLE_NAME)
-    .insert(newRows);
+  for (let i = 0; i < newRows.length; i += SAVE_CHUNK_SIZE) {
+    const chunk = newRows.slice(i, i + SAVE_CHUNK_SIZE);
 
-  if (error) {
-    console.error(error);
-    tableManager.setStatus("대량 등록 실패");
-    return false;
+    tableManager.setStatus(
+      `대량 등록 중... ${num(Math.min(i + SAVE_CHUNK_SIZE, newRows.length))} / ${num(newRows.length)}`
+    );
+
+    const { error } = await supabaseClient
+      .from(TABLE_NAME)
+      .insert(chunk);
+
+    if (error) {
+      console.error(error);
+      tableManager.setStatus("대량 등록 실패");
+      return false;
+    }
   }
 
   await loadRows();

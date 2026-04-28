@@ -320,28 +320,36 @@
     <div class="scan-out-page">
       <div id="page-topbar"></div>
 
-      <div class="scan-panel">
-        <div class="scan-row">
-          <label for="invoiceInput">Invoice</label>
-          <input id="invoiceInput" class="scan-input" type="text" autocomplete="off">
-          <button id="btnSearchInvoice" class="scan-btn primary" type="button">조회</button>
-          <button id="btnSpecialNote" class="scan-btn" type="button">특이사항</button>
-        </div>
+     <div class="scan-panel">
+  <div class="scan-row">
+    <label for="invoiceInput">Invoice</label>
+    <input id="invoiceInput" class="scan-input" type="text" autocomplete="off">
+    <button id="btnSearchInvoice" class="scan-btn primary" type="button">조회</button>
+    <button id="btnSpecialNote" class="scan-btn" type="button">특이사항</button>
+  </div>
 
-        <div class="summary-grid">
-          <div class="summary-item"><span>국가</span><strong id="country">-</strong></div>
-          <div class="summary-item"><span>출고일</span><strong id="ship_date">-</strong></div>
-          <div class="summary-item"><span>상차위치</span><strong id="location">-</strong></div>
-          <div class="summary-item"><span>컨테이너</span><strong id="container">-</strong></div>
-          <div class="summary-item"><span>CBM</span><strong id="cbm">0</strong></div>
-          <div class="summary-item"><span>수량</span><strong id="outbound_qty">0</strong></div>
-        </div>
+  <div class="summary-grid">
+    <div class="summary-item"><span>국가</span><strong id="country">-</strong></div>
+    <div class="summary-item"><span>출고일</span><strong id="ship_date">-</strong></div>
+    <div class="summary-item"><span>상차위치</span><strong id="location">-</strong></div>
+    <div class="summary-item"><span>컨테이너</span><strong id="container">-</strong></div>
+    <div class="summary-item"><span>CBM</span><strong id="cbm">0</strong></div>
+    <div class="summary-item"><span>수량</span><strong id="outbound_qty">0</strong></div>
+  </div>
 
-        <div class="scan-row" style="margin-top:8px;margin-bottom:0;">
-          <label for="scanInput">스캔</label>
-          <input id="scanInput" class="scan-input" type="text" placeholder="바코드 / 코드 / 박스번호" autocomplete="off">
-        </div>
-
+  <div class="scan-row" style="margin-top:8px;margin-bottom:0;">
+    <label for="scanInput">스캔</label>
+    <input
+      id="scanInput"
+      class="scan-input"
+      type="search"
+      inputmode="text"
+      enterkeyhint="search"
+      placeholder="바코드 / 코드 / 박스번호"
+      autocomplete="off"
+    >
+    <button id="btnScanRun" class="scan-btn primary" type="button">스캔</button>
+  </div>
         <div id="scanStatus" class="scan-status">Invoice 조회 후 스캔하세요.</div>
 
         <div class="scan-log">
@@ -412,6 +420,6 @@
   <audio id="sound-modal" src="/sound/modal.mp3" preload="auto"></audio>
   <audio id="sound-ok" src="/sound/ok.mp3" preload="auto"></audio>
 
-  <script type="module" src="/assets/js/pages/scan/scan_out.js?v=20260425_10"></script>
+  <script type="module" src="/assets/js/pages/scan/scan_out.js?v=20260425_13"></script>
 </body>
 </html>

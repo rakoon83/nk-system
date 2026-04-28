@@ -101,6 +101,29 @@
     .sap-item-table col:nth-child(13) { width: 90px; }
     .sap-item-table col:nth-child(14) { width: 220px; }
     .sap-item-table col:nth-child(15) { width: 180px; }
+
+    .danger-toolbar {
+      flex: 0 0 auto;
+      display: flex;
+      justify-content: flex-end;
+      padding: 0 14px 8px;
+      background: #fff;
+    }
+
+    .btn-delete-all {
+      border: 1px solid #fecaca;
+      background: #fff1f2;
+      color: #b91c1c;
+      border-radius: 10px;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .btn-delete-all:hover {
+      background: #ffe4e6;
+    }
   </style>
 </head>
 <body>
@@ -110,6 +133,9 @@
     <div class="sap-item-page">
       <div id="page-topbar"></div>
       <div id="sap-item-toolbar"></div>
+      <div class="danger-toolbar no-print">
+        <button type="button" id="btn-delete-all" class="btn-delete-all">전체 삭제</button>
+      </div>
 
       <div id="print-area" class="table-shell">
         <table class="wms-table sap-item-table" id="sap-item-table">
@@ -263,6 +289,6 @@
 
   <div id="modal-root"></div>
 
-  <script type="module" src="/assets/js/pages/admin/upload/sap_item.js?v=20260422"></script>
+  <script type="module" src="/assets/js/pages/admin/upload/sap_item.js?v=20260428_01"></script>
 </body>
 </html>

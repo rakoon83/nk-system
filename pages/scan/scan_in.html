@@ -345,8 +345,16 @@
 
         <div class="scan-row" style="margin-top:8px;margin-bottom:0;">
           <label for="scanInput">스캔</label>
-          <input id="scanInput" class="scan-input" type="text" placeholder="바코드 / 코드 / 박스번호" autocomplete="off">
-        </div>
+<input
+  id="scanInput"
+  class="scan-input"
+  type="search"
+  inputmode="text"
+  enterkeyhint="search"
+  placeholder="바코드 / 코드 / 박스번호"
+  autocomplete="off"
+>
+</div>
 
         <div id="scanStatus" class="scan-status">Invoice 조회 후 스캔하세요.</div>
 
